@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>ClutterCam</title>
+
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+    }
+
+    .app {
+        padding: 20px;
+        max-width: 600px;
+        margin: auto;
+        padding-bottom: 80px;
+    }
+
+    .title {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .scan-btn {
+        width: 100%;
+        padding: 14px;
+        background: #0078ff;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        cursor: pointer;
+        margin-bottom: 20px;
+    }
+
+    .rooms {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .room {
+        flex: 1;
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        text-align: center;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+
+    .room.selected {
+        border-color: #0078ff;
+    }
+
+    .analysis-box {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+
+    #previewImage {
+        width: 100%;
+        border-radius: 8px;
+        margin-top: 10px;
+        display: none;
+    }
+
+    #improvedImage {
+        width: 100%;
+        margin-top: 10px;
+        border-radius: 8px;
+        display: none;
+    }
+
+    .loading-spinner {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 20px;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #ddd;
+        border-top-color: #0078ff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+        margin-top: 10px;
+        font-size: 16px;
+        color: #333;
+    }
+
+    #historyList {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+    }
+
+    .popup {
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 20;
+    }
+
+    .photo-btn,
+    .upload-btn {
+        width: 100%;
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 15px;
+    }
+
+    .photo-btn {
+        background: #0078ff;
+        color: white;
+    }
+
+    .upload-btn {
+        background: #eee;
+    }
+
+    .navbar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        display: flex;
+        justify-content: space-around;
+        padding: 12px 0;
+        border-top: 1px solid #ddd;
+        z-index: 10;
+    }
+
+    .nav-item {
+        cursor: pointer;
+        font-size: 14px;
+        color: #555;
+    }
+
+    .nav-item.active {
+        color: #0078ff;
+        font-weight: bold;
+    }
+
+    #historyModal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.6);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        z-index: 30;
+    }
+
+    .modal-card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    #modalOriginal, #modalImproved {
+        width: 100%;
+        border-radius: 8px;
+        margin-top: 10px;
+    }
+
+    #modalDeleteBtn {
+        width: 100%;
+        margin-top: 20px;
+        background: #d9534f;
+        color: white;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .toast {
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #333;
+        color: white;
+        padding: 12px 18px;
+        border-radius: 8px;
+        font-size: 15px;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+        pointer-events: none;
+        z-index: 40;
+    }
+    .toast.show {
+        opacity: 1;
+    }
+
+    .filter-btn {
+        flex: 1;
+        padding: 8px;
+        background: #eee;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .filter-btn.active {
+        background: #0078ff;
+        color: white;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="app">
+    <h1 class="title">ClutterCam</h1>
+
+    <button class="scan-btn" id="scanBtn">SCAN DE KAMER</button>
+
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+    <input type="file" id="uploadInput" accept="image/*" style="display:none;">
+
+    <div class="rooms">
+        <div class="room" data-room="living">
+            <span class="room-name">WOONKAMER</span>
+        </div>
+
+        <div class="room" data-room="bed">
+            <span class="room-name">SLAAPKAMER</span>
+        </div>
+
+        <div class="room" data-room="kitchen">
+            <span class="room-name">KEUKEN</span>
+        </div>
+    </div>
+
+    <img id="previewImage" alt="Voorbeeldfoto">
+
+    <div class="analysis-box" id="analysisBox" style="display:none;">
+        <div class="analysis-title">AANBEVELINGEN</div>
+        <div class="analysis-output" id="analysisOutput"></div>
+        <img id="improvedImage" alt="Verbeterde foto">
+    </div>
+
+    <div id="loading" class="loading-spinner">
+        <div class="spinner"></div>
+        <div class="loading-text">AI is bezig…</div>
+    </div>
+
+    <div class="analysis-box history-box" id="historyBox" style="display:none;">
+        <div class="analysis-title">RECENTE SCANS</div>
+
+        <div id="historyFilters" style="display:flex; gap:10px; margin-bottom:10px;">
+            <button class="filter-btn active" data-filter="all">Alles</button>
+            <button class="filter-btn" data-filter="living">Woonkamer</button>
+            <button class="filter-btn" data-filter="bed">Slaapkamer</button>
+            <button class="filter-btn" data-filter="kitchen">Keuken</button>
+        </div>
+
+        <div id="historyList"></div>
+
+        <button id="deleteAllBtn" style="
+            margin-top: 10px;
+            width: 100%;
+            background:#d9534f;
+            color:white;
+            padding:10px;
+            border:none;
+            border-radius:8px;
+            cursor:pointer;
+        ">
+            Alles verwijderen
+        </button>
+
+        <div class="small-muted" style="margin-top:8px;">Klik op een thumbnail om details te bekijken.</div>
+    </div>
+
+    <div class="analysis-box" id="profileBox" style="display:none;">
+        <div class="analysis-title">PROFIEL</div>
+
+        <div style="margin-top:10px;">
+            <strong>Totaal aantal scans:</strong>
+            <div id="profileTotalScans">0</div>
+        </div>
+
+        <div style="margin-top:10px;">
+            <strong>Meest gescande kamer:</strong>
+            <div id="profileMostRoom">-</div>
+        </div>
+
+        <div style="margin-top:10px;">
+            <strong>Laatste scan:</strong>
+            <div id="profileLastScan">-</div>
+        </div>
+
+        <img id="profileLastImage" style="width:100%; margin-top:10px; border-radius:8px; display:none;">
+    </div>
+</div>
+
+<div class="popup" id="popupMenu">
+    <div style="font-size:16px; font-weight:600;">Kies een optie</div>
+    <button class="photo-btn" id="takePhotoBtn">📷 Foto maken</button>
+    <button class="upload-btn" id="uploadPhotoBtn">🖼️ Afbeelding uploaden</button>
+</div>
+
+<nav class="navbar">
+    <div class="nav-item active" data-tab="home">Home</div>
+    <div class="nav-item" data-tab="scan">Scan</div>
+    <div class="nav-item" data-tab="profile">Profiel</div>
+</nav>
+
+<div id="historyModal">
+    <div class="modal-card">
+        <button id="closeModal">Sluiten</button>
+
+        <h3 id="modalRoom">Scan details</h3>
+
+        <img id="modalOriginal" alt="Origineel">
+        <img id="modalImproved" alt="Verbeterd" style="display:none;">
+
+        <div id="modalAnalysis" style="margin-top:8px; white-space:pre-line;"></div>
+
+        <button id="modalDeleteBtn">Verwijderen</button>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+function showToast(msg) {
+    const toast = document.getElementById("toast");
+    toast.innerText = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2500);
+}
+
+let selectedRoom = null;
+let capturedImage = null;
+let lastAnalysisId = null;
+let activeFilter = "all";
+
+const popup = document.getElementById("popupMenu");
+const scanBtn = document.getElementById("scanBtn");
+
+/* ROOM SELECT + POPUP */
+document.querySelectorAll('.room').forEach(room => {
+    room.addEventListener('click', () => {
+        document.querySelectorAll('.room').forEach(r => r.classList.remove('selected'));
+        room.classList.add('selected');
+        selectedRoom = room.dataset.room;
+        popup.style.display = "block";
+    });
+});
+
+/* PHOTO / UPLOAD */
+document.getElementById('takePhotoBtn').addEventListener('click', () => {
+    popup.style.display = "none";
+    document.getElementById('cameraInput').click();
+});
+
+document.getElementById('uploadPhotoBtn').addEventListener('click', () => {
+    popup.style.display = "none";
+    document.getElementById('uploadInput').click();
+});
+
+document.getElementById('cameraInput').addEventListener('change', (event) => {
+    capturedImage = event.target.files[0];
+    const url = URL.createObjectURL(capturedImage);
+    document.getElementById('previewImage').src = url;
+    document.getElementById('previewImage').style.display = "block";
+    showToast("Foto gemaakt");
+});
+
+document.getElementById('uploadInput').addEventListener('change', (event) => {
+    capturedImage = event.target.files[0];
+    const url = URL.createObjectURL(capturedImage);
+    document.getElementById('previewImage').src = url;
+    document.getElementById('previewImage').style.display = "block";
+    showToast("Foto geselecteerd");
+});
+
+/* HISTORY MODAL */
+document.getElementById('closeModal').addEventListener('click', () => {
+    document.getElementById('historyModal').style.display = "none";
+});
+
+/* FILTERS */
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        activeFilter = btn.dataset.filter;
+        loadHistory();
+    });
+});
+
+/* INITIAL LOAD */
+window.addEventListener('load', () => {
+    loadHistory();
+});
+
+/* HISTORY LIST */
+async function loadHistory() {
+    try {
+        const resp = await fetch("http://localhost:3000/history");
+        const data = await resp.json();
+        const list = document.getElementById('historyList');
+        list.innerHTML = "";
+
+        if (!data.items || data.items.length === 0) {
+            document.getElementById('historyBox').style.display = "none";
+            return;
+        }
+
+        document.getElementById('historyBox').style.display = "block";
+
+        data.items
+            .filter(item => activeFilter === "all" || item.room === activeFilter)
+            .forEach(item => {
+                const thumb = document.createElement('div');
+                thumb.dataset.id = item.id;
+                thumb.id = `thumb-${item.id}`;
+                thumb.style.cursor = "pointer";
+                thumb.style.textAlign = "center";
+
+                const img = document.createElement('img');
+                img.src = (item.improved ? item.improved : item.original) + '?t=' + Date.now();
+                img.style.width = "100%";
+                img.style.height = "90px";
+                img.style.objectFit = "cover";
+                img.style.borderRadius = "8px";
+
+                const label = document.createElement('div');
+                label.style.fontSize = "12px";
+                label.style.marginTop = "6px";
+                label.innerText = new Date(item.createdAt).toLocaleString();
+
+                thumb.appendChild(img);
+                thumb.appendChild(label);
+                thumb.addEventListener('click', () => openHistoryDetail(item.id));
+                list.appendChild(thumb);
+            });
+
+    } catch (err) {
+        console.error("Kon history niet laden:", err);
+    }
+}
+
+/* HISTORY DETAIL */
+async function openHistoryDetail(id) {
+    try {
+        const resp = await fetch(`http://localhost:3000/history/${id}`);
+        const meta = await resp.json();
+
+        document.getElementById('modalOriginal').src = meta.original || "";
+        if (meta.improved) {
+            document.getElementById('modalImproved').style.display = "block";
+            document.getElementById('modalImproved').src = meta.improved;
+        } else {
+            document.getElementById('modalImproved').style.display = "none";
+        }
+
+        document.getElementById('modalAnalysis').innerText = meta.analysis || "Geen analyse beschikbaar";
+        document.getElementById('modalRoom').innerText = meta.room ? meta.room.toUpperCase() : "Scan details";
+
+        const deleteBtn = document.getElementById('modalDeleteBtn');
+        deleteBtn.style.display = "block";
+        deleteBtn.onclick = () => deleteHistoryItem(id);
+
+        document.getElementById('historyModal').style.display = "flex";
+
+    } catch (err) {
+        console.error(err);
+        showToast("Kon detail niet laden");
+    }
+}
+
+/* DELETE SINGLE HISTORY */
+async function deleteHistoryItem(id) {
+    const confirmDelete = confirm("Weet je zeker dat je deze scan wilt verwijderen?");
+    if (!confirmDelete) return;
+
+    try {
+        const resp = await fetch(`http://localhost:3000/history/${id}`, {
+            method: "DELETE"
+        });
+
+        const data = await resp.json();
+        if (data.success) {
+            showToast("Scan verwijderd.");
+            document.getElementById('historyModal').style.display = "none";
+
+            const el = document.getElementById(`thumb-${id}`);
+            if (el && el.parentNode) el.parentNode.removeChild(el);
+
+            await loadHistory();
+        } else {
+            showToast("Verwijderen mislukt.");
+        }
+    } catch (err) {
+        console.error("Fout bij verwijderen:", err);
+        showToast("Kon scan niet verwijderen.");
+    }
+}
+
+/* DELETE ALL HISTORY */
+document.getElementById('deleteAllBtn').addEventListener('click', async () => {
+    const confirmDelete = confirm("Weet je zeker dat je ALLE scans wilt verwijderen?");
+    if (!confirmDelete) return;
+
+    try {
+        const resp = await fetch("http://localhost:3000/history", {
+            method: "DELETE"
+        });
+
+        const data = await resp.json();
+        if (data.success) {
+            showToast("Alle scans verwijderd.");
+            await loadHistory();
+        } else {
+            showToast("Verwijderen mislukt.");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("Kon niet verwijderen.");
+    }
+});
+
+/* PROFILE LOAD */
+async function loadProfile() {
+    try {
+        const resp = await fetch("http://localhost:3000/profile");
+        const data = await resp.json();
+
+        document.getElementById('profileTotalScans').innerText = data.totalScans;
+
+        document.getElementById('profileMostRoom').innerText =
+            data.mostScannedRoom ? data.mostScannedRoom.toUpperCase() : "-";
+
+        if (data.lastScan) {
+            document.getElementById('profileLastScan').innerText =
+                new Date(data.lastScan.createdAt).toLocaleString();
+
+            const img = document.getElementById('profileLastImage');
+            img.src = data.lastScan.improved || data.lastScan.original;
+            img.style.display = "block";
+        } else {
+            document.getElementById('profileLastScan').innerText = "-";
+            document.getElementById('profileLastImage').style.display = "none";
+        }
+
+    } catch (err) {
+        console.error("Kon profiel niet laden:", err);
+        showToast("Kon profiel niet laden.");
+    }
+}
+
+/* NAV SWITCHING */
+document.querySelectorAll('.nav-item').forEach((item) => {
+    item.addEventListener('click', () => {
+
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+
+        const tab = item.dataset.tab;
+
+        if (tab === "home") {
+            document.getElementById('analysisBox').style.display = "none";
+            document.getElementById('historyBox').style.display = "block";
+            document.getElementById('profileBox').style.display = "none";
+        }
+
+        if (tab === "scan") {
+            document.getElementById('analysisBox').style.display = "block";
+            document.getElementById('historyBox').style.display = "none";
+            document.getElementById('profileBox').style.display = "none";
+        }
+
+        if (tab === "profile") {
+            document.getElementById('analysisBox').style.display = "none";
+            document.getElementById('historyBox').style.display = "none";
+            document.getElementById('profileBox').style.display = "block";
+            loadProfile();
+        }
+    });
+});
+
+/* SCAN FLOW */
+scanBtn.addEventListener('click', async () => {
+    if (!selectedRoom) {
+        showToast("Selecteer eerst een kamer.");
+        return;
+    }
+    if (!capturedImage) {
+        showToast("Maak of upload eerst een foto.");
+        return;
+    }
+
+    const loading = document.getElementById('loading');
+    loading.style.display = "flex";
+
+    try {
+        const formData = new FormData();
+        formData.append("image", capturedImage);
+        formData.append("room", selectedRoom);
+
+        const analyzeResp = await fetch("http://localhost:3000/analyze", {
+            method: "POST",
+            body: formData
+        });
+
+        const analyzeData = await analyzeResp.json();
+        if (analyzeData.error) {
+            showToast("Analyse mislukt.");
+            loading.style.display = "none";
+            return;
+        }
+
+        lastAnalysisId = analyzeData.id;
+
+        document.getElementById('analysisBox').style.display = "block";
+        document.getElementById('analysisOutput').innerText = analyzeData.analysis || "";
+
+        const improveForm = new FormData();
+        improveForm.append("image", capturedImage);
+        improveForm.append("id", lastAnalysisId);
+        improveForm.append("analysis", analyzeData.analysis || "");
+
+        const improveResp = await fetch("http://localhost:3000/improve", {
+            method: "POST",
+            body: improveForm
+        });
+
+        const improveData = await improveResp.json();
+        if (improveData.error) {
+            showToast("Verbeterde foto mislukt.");
+            loading.style.display = "none";
+            return;
+        }
+
+        const img = document.getElementById('improvedImage');
+        img.src = "data:image/png;base64," + improveData.improvedImage;
+        img.style.display = "block";
+
+        await loadHistory();
+
+    } catch (err) {
+        console.error("Fout bij scan:", err);
+        showToast("Scan mislukt.");
+    } finally {
+        loading.style.display = "none";
+    }
+});
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
