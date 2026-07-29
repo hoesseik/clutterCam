@@ -718,8 +718,14 @@ async function loadHistory() {
                 thumb.className = "history-thumb";
                 thumb.dataset.id = item.id;
 
-                const img = document.createElement('img');
-                img.src = (item.improved ? item.improved : item.original) + '?t=' + Date.now();
+             const img = document.createElement('img');
+             const imageSource = item.improved || item.original;
+
+             if (imageSource) {
+             img.src = imageSource + '?t=' + Date.now();
+             } else {
+             img.style.display = 'none'; // Verbergt het plaatje als er geen foto is
+             }
 
                 const label = document.createElement('div');
                 label.className = "history-label";
