@@ -965,16 +965,17 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     showLoading();
 
     try {
-        // ANALYZE
-        const formData = new FormData();
-        formData.append("image", capturedImage);
-        formData.append("room", selectedRoom);
-
-     const analyzeResp = await fetch("/api/analyze", {
-    method: "POST",
-    body: formData
-});
-
+        // 1. ANALYZE REQUEST (met JSON)
+        const analyzeResp = await fetch("/api/analyze", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                image: capturedImage,
+                room: selectedRoom
+            })
+        });
 
         if (!analyzeResp.ok) throw new Error("Analyze request failed");
 
@@ -983,24 +984,30 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
         document.getElementById('analysisOutput').innerText = analyzeData.analysis || "";
 
-        // IMPROVE
-        const improveForm = new FormData();
-        improveForm.append("image", capturedImage);
-        improveForm.append("id", lastAnalysisId);
-        improveForm.append("analysis", analyzeData.analysis || "");
-
-       const improveResp = await fetch("/api/improve", {
-    method: "POST",
-    body: improveForm
-});
-
+        // 2. IMPROVE REQUEST (met JSON)
+        const improveResp = await fetch("/api/improve", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                image: capturedImage,
+                id: lastAnalysisId,
+                analysis: analyzeData.analysis || ""
+            })
+        });
 
         if (!improveResp.ok) throw new Error("Improve request failed");
 
         const improveData = await improveResp.json();
 
         const img = document.getElementById('improvedImage');
-        img.src = "data:image/png;base64," + improveData.improvedImage;
+        // Controleer of de image al 'data:image...' bevat of dat base64 moet worden toegevoegd
+        const imageSource = improveData.improvedImage.startsWith('data:') 
+            ? improveData.improvedImage 
+            : "data:image/png;base64," + improveData.improvedImage;
+
+        img.src = imageSource;
         img.style.display = "block";
 
         await loadHistory();
