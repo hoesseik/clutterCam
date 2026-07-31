@@ -999,23 +999,30 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
         if (!improveResp.ok) throw new Error("Improve request failed");
 
-       const improveData = await improveResp.json();
+      const improveData = await improveResp.json();
+        console.log("Response van /api/improve:", improveData);
+
         const img = document.getElementById('improvedImage');
-        
-        // 1. Haal de waarde op (controleer of het ingepakt zit in een object)
-        let rawImage = improveData.improvedImage;
-        if (rawImage && typeof rawImage === 'object') {
-            rawImage = rawImage.url || rawImage.b64_json || rawImage.image || "";
+
+        // 1. Zoek naar de daadwerkelijke string, waar hij ook verstopt zit
+        let rawImage = improveData.improvedImage || improveData.image || improveData.url || improveData;
+
+        if (typeof rawImage === 'object' && rawImage !== null) {
+            if (Array.isArray(rawImage)) rawImage = rawImage[0];
+            rawImage = rawImage.b64_json || rawImage.url || rawImage.image || Object.values(rawImage)[0] || "";
         }
 
-        // 2. Bouw de juiste img source op
-        let imageSource = rawImage || "";
-        if (imageSource && !imageSource.startsWith('data:') && !imageSource.startsWith('http')) {
-            imageSource = "data:image/png;base64," + imageSource;
+        // 2. Bouw de afbeelding URL op
+        if (typeof rawImage === 'string' && rawImage.length > 0) {
+            let imageSource = rawImage;
+            if (!imageSource.startsWith('data:') && !imageSource.startsWith('http')) {
+                imageSource = "data:image/png;base64," + imageSource;
+            }
+            img.src = imageSource;
+            img.style.display = "block";
+        } else {
+            console.error("Geen geldige afbeelding string gevonden:", rawImage);
         }
-
-        img.src = imageSource;
-        img.style.display = "block";
 
         await loadHistory();
         showToast("Scan voltooid!");
