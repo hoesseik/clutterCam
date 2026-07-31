@@ -1004,15 +1004,20 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
         const img = document.getElementById('improvedImage');
 
-        // 1. Zoek naar de daadwerkelijke string, waar hij ook verstopt zit
-        let rawImage = improveData.improvedImage || improveData.image || improveData.url || improveData;
+        // 1. Haal het OpenAI antwoord-object op
+        let rawImage = improveData.improvedImage;
 
+        // ALS het in openai's standaard indeling zit: { data: [ { b64_json: '...' } ] } of { data: [ { url: '...' } ] }
+        if (rawImage && rawImage.data && Array.isArray(rawImage.data) && rawImage.data.length > 0) {
+            rawImage = rawImage.data[0].b64_json || rawImage.data[0].url || rawImage.data[0];
+        }
+
+        // ALS het toch nog een generiek object is, pak de eerste property
         if (typeof rawImage === 'object' && rawImage !== null) {
-            if (Array.isArray(rawImage)) rawImage = rawImage[0];
             rawImage = rawImage.b64_json || rawImage.url || rawImage.image || Object.values(rawImage)[0] || "";
         }
 
-        // 2. Bouw de afbeelding URL op
+        // 2. Bouw de afbeelding src op
         if (typeof rawImage === 'string' && rawImage.length > 0) {
             let imageSource = rawImage;
             if (!imageSource.startsWith('data:') && !imageSource.startsWith('http')) {
@@ -1021,7 +1026,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
             img.src = imageSource;
             img.style.display = "block";
         } else {
-            console.error("Geen geldige afbeelding string gevonden:", rawImage);
+            console.error("Geen geldige afbeelding string gevonden in:", improveData.improvedImage);
         }
 
         await loadHistory();
