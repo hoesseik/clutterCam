@@ -12,26 +12,26 @@ export default async function handler(req, res) {
     try {
         const { analysis, room } = req.body;
 
-        // Laat DALL-E 3 een schone/opgeruimde versie tekenen op basis van de kamer en analyse
         const prompt = `A clean, perfectly organized, tidy and beautiful ${room || "room"}. No clothes on the floor or bed, no mess, well-lit modern interior photography. Context: ${analysis || "tidy room"}`;
 
+        // Genereer de afbeelding met DALL-E 3 (zonder response_format)
         const response = await openai.images.generate({
             model: "dall-e-3",
             prompt: prompt,
             n: 1,
             size: "1024x1024",
-            response_format: "b64_json",
         });
 
-        const newImageBase64 = response.data[0].b64_json;
+        // Pak de gegenereerde URL
+        const imageUrl = response.data[0].url;
 
         return res.status(200).json({
             message: "Image improved successfully",
-            improvedImage: `data:image/png;base64,${newImageBase64}`
+            improvedImage: imageUrl
         });
 
     } catch (error) {
         console.error("Error in /api/improve:", error);
-        return res.status(500).json({ error: "Failed to generate improved image" });
+        return res.status(500).json({ error: error.message || "Failed to generate improved image" });
     }
 }
