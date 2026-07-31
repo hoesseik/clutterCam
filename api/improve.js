@@ -24,7 +24,6 @@ const handler = async function (req, res) {
   }
 
   try {
-    // 1. Fallback om .env.local direct te lezen als process.env leeg is (voor lokaal testen)
     if (!process.env.OPENAI_API_KEY) {
       const envPath = path.join(process.cwd(), '.env.local');
       if (fs.existsSync(envPath)) {
@@ -48,10 +47,11 @@ const handler = async function (req, res) {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+    // Hiermee genereert OpenAI een schone versie van de kamer
     const prompt = `A clean, perfectly organized, tidy and beautiful ${room || "room"}. No clothes on the floor or bed, no mess, well-lit modern interior photography, professional interior design.`;
 
     const response = await openai.images.generate({
-      model: "gpt-4-turbo",
+      model: "gpt-image-1", // <--- DIT MOET EXACT gpt-image-1 ZIJN
       prompt: prompt,
       n: 1,
       size: "1024x1024",
