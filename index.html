@@ -1002,10 +1002,12 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         const improveData = await improveResp.json();
 
         const img = document.getElementById('improvedImage');
-        // Controleer of de image al 'data:image...' bevat of dat base64 moet worden toegevoegd
-        const imageSource = improveData.improvedImage.startsWith('data:') 
-            ? improveData.improvedImage 
-            : "data:image/png;base64," + improveData.improvedImage;
+        
+        // Zorg ervoor dat we veilig controleren of het een string is
+        const rawImage = improveData.improvedImage || "";
+        const imageSource = (typeof rawImage === 'string' && rawImage.startsWith('data:')) 
+            ? rawImage 
+            : "data:image/png;base64," + rawImage;
 
         img.src = imageSource;
         img.style.display = "block";
