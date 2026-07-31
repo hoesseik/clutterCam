@@ -2,10 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const { OpenAI } = require('openai');
 
-// Vercel instructie: schakel de standaard body-parser uit voor file uploads (indien nodig)
+// Vercel instructie: verhoog de body-parser limiet voor grote base64 afbeeldingen
 const config = {
   api: {
-    bodyParser: false,
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
   },
 };
 
@@ -24,7 +26,7 @@ const handler = async function (req, res) {
   }
 
   try {
-    // 2. Probeer OPENAI_API_KEY uit process.env te halen, en fallback naar .env.local als die bestaat
+    // 2. Probeer OPENAI_API_KEY uit process.env te halen, en fallback naar .env.local
     if (!process.env.OPENAI_API_KEY) {
       const envPath = path.join(process.cwd(), '.env.local');
       if (fs.existsSync(envPath)) {
@@ -32,7 +34,6 @@ const handler = async function (req, res) {
           const content = fs.readFileSync(envPath, 'utf8');
           const match = content.match(/^OPENAI_API_KEY=(.+)$/m);
           if (match && match[1]) {
-            // Verwijder optionele quotes en whitespace, maar log nooit de key zelf
             process.env.OPENAI_API_KEY = match[1].trim().replace(/^"|"$/g, '');
             console.log('OPENAI_API_KEY geladen uit .env.local (redacted).');
           } else {
@@ -51,18 +52,69 @@ const handler = async function (req, res) {
       throw new Error('OPENAI_API_KEY is niet ingesteld in Vercel Environment Variables of .env.local.');
     }
 
-    // 4. (Optioneel) OpenAI client initialiseren — niet nodig voor mock response,
-    // maar klaar om te gebruiken zodra je echte analyse wilt doen.
-    // const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    // 4. Afbeelding uit de request body halen
+    const { image } = req.body || {};
+    if (!image) {
+      return res.status(400).json({ error: 'Geen afbeelding ontvangen in de body' });
+    }
 
-    // 5. Tijdelijke test-respons om te verifiëren dat de verbinding werkt
-    const id = Date.now().toString();
-    const mockAnalysis = 'Kamer geanalyseerd: Er liggen spullen op de tafel die opgeruimd kunnen worden.';
+    const formattedImage = image.startsWith('data:') 
+      ? image 
+      : `data:image/jpeg;base64,${image}`;
 
-    return res.status(200).json({
-      id,
-      analysis: mockAnalysis,
+    // 5. OpenAI client initialiseren
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    // 6. Echte Vision Analyse uitvoeren
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `Je bent een professionele opruim- en organisatie-expert. 
+Analyseer de foto van de kamer grondig en geef een uitgebreid, helder en motiverend opruimadvies.
+
+Structureer je antwoord ALTIJD in de volgende onderdelen:
+
+📍 **Type ruimte**: [bijv. Slaapkamer, Bureau, Woonkamer]
+🧹 **Status van de kamer**: [In 1-2 zinnen een korte samenvatting van wat er ligt]
+
+📋 **Concreet Stappenplan**:
+1. **[Stap 1: Afval & Vaat]**: ...
+2. **[Stap 2: Kleding]**: ...
+3. **[Stap 3: Oppervlakken]**: ...
+4. **[Stap 4: Ordenen & Opbergen]**: ...
+5. **[Stap 5: Laatste puntjes op de i]**: ...
+
+Houd de toon vriendelijk, praktisch, to-the-point en direct uitvoerbaar. Gebruik duidelijke opmaak met opsommingstekens.`
+        },
+        {
+          role: "user",
+          content: [
+            { 
+              type: "text", 
+              text: "Analyseer deze kamer en geef een gedetailleerd opruimadvies met concrete stappen." 
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: formattedImage
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 600
     });
+
+    const analysisText = response.choices[0].message.content;
+
+    // 7. Geef de echte analyse terug
+    return res.status(200).json({
+      id: Date.now().toString(),
+      analysis: analysisText,
+    });
+
   } catch (error) {
     console.error('Analyze error:', error.message);
     return res.status(500).json({
