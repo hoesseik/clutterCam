@@ -916,6 +916,7 @@ function updateBadges(best, worst) {
         worstBadge.innerText = `Slechtste scan: ${worst.room.toUpperCase()} (${worst.score})`;
     }
 }
+// Helper om een bestand/blob om te zetten naar een Base64 string
 
 /* ---------------------------------------------------
    NAVIGATION
@@ -948,6 +949,16 @@ document.querySelectorAll('.nav-item').forEach((item) => {
         }
     });
 });
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        if (!file) return resolve("");
+        if (typeof file === 'string') return resolve(file); // Als het al een string/URL is
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
 
 /* ---------------------------------------------------
    SCAN FLOW
@@ -965,14 +976,15 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     showLoading();
 
     try {
-        // 1. ANALYZE REQUEST (met JSON)
+        // Omzetten van File/Blob naar Base64 string
+        const imageBase64 = await fileToBase64(capturedImage);
+
+        // 1. ANALYZE REQUEST
         const analyzeResp = await fetch("/api/analyze", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                image: capturedImage,
+                image: imageBase64,
                 room: selectedRoom
             })
         });
@@ -984,14 +996,12 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
         document.getElementById('analysisOutput').innerText = analyzeData.analysis || "";
 
-        // 2. IMPROVE REQUEST (met JSON)
+        // 2. IMPROVE REQUEST
         const improveResp = await fetch("/api/improve", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                image: capturedImage,
+                image: imageBase64,
                 id: lastAnalysisId,
                 analysis: analyzeData.analysis || ""
             })
@@ -999,25 +1009,21 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
         if (!improveResp.ok) throw new Error("Improve request failed");
 
-      const improveData = await improveResp.json();
+        const improveData = await improveResp.json();
         console.log("Response van /api/improve:", improveData);
 
         const img = document.getElementById('improvedImage');
 
-        // 1. Haal het OpenAI antwoord-object op
         let rawImage = improveData.improvedImage;
 
-        // ALS het in openai's standaard indeling zit: { data: [ { b64_json: '...' } ] } of { data: [ { url: '...' } ] }
         if (rawImage && rawImage.data && Array.isArray(rawImage.data) && rawImage.data.length > 0) {
             rawImage = rawImage.data[0].b64_json || rawImage.data[0].url || rawImage.data[0];
         }
 
-        // ALS het toch nog een generiek object is, pak de eerste property
         if (typeof rawImage === 'object' && rawImage !== null) {
             rawImage = rawImage.b64_json || rawImage.url || rawImage.image || Object.values(rawImage)[0] || "";
         }
 
-        // 2. Bouw de afbeelding src op
         if (typeof rawImage === 'string' && rawImage.length > 0) {
             let imageSource = rawImage;
             if (!imageSource.startsWith('data:') && !imageSource.startsWith('http')) {
@@ -1041,7 +1047,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 });
 
 /* ---------------------------------------------------
-   INITIAL LOAD
+    INITIAL LOAD
 --------------------------------------------------- */
 window.addEventListener('load', () => {
     loadHistory();
