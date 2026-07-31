@@ -68,7 +68,7 @@ const handler = async function (req, res) {
     // 6. Echte Vision Analyse uitvoeren
     // 6. Echte Vision Analyse uitvoeren
     const response = await openai.chat.completions.create({
-      model: "gpt-5-mini", // of het model dat je nu gekozen hebt
+      model: "gpt-image-1.5", // of het model dat je nu gekozen hebt
       messages: [
         {
           role: "system",
