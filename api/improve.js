@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const { OpenAI } = require('openai');
 
 const config = {
@@ -22,6 +24,26 @@ const handler = async function (req, res) {
   }
 
   try {
+    // 1. Fallback om .env.local direct te lezen als process.env leeg is (voor lokaal testen)
+    if (!process.env.OPENAI_API_KEY) {
+      const envPath = path.join(process.cwd(), '.env.local');
+      if (fs.existsSync(envPath)) {
+        try {
+          const content = fs.readFileSync(envPath, 'utf8');
+          const match = content.match(/^OPENAI_API_KEY=(.+)$/m);
+          if (match && match[1]) {
+            process.env.OPENAI_API_KEY = match[1].trim().replace(/^"|"$/g, '');
+          }
+        } catch (e) {
+          console.log('Fout bij lezen van .env.local:', e.message);
+        }
+      }
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is niet ingesteld.');
+    }
+
     const { room } = req.body || {};
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -29,7 +51,7 @@ const handler = async function (req, res) {
     const prompt = `A clean, perfectly organized, tidy and beautiful ${room || "room"}. No clothes on the floor or bed, no mess, well-lit modern interior photography, professional interior design.`;
 
     const response = await openai.images.generate({
-      model: "gpt-image-1", // <--- Dit model staat wél in jouw lijst!
+      model: "gpt-image-1",
       prompt: prompt,
       n: 1,
       size: "1024x1024",
