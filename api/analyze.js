@@ -66,8 +66,9 @@ const handler = async function (req, res) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     // 6. Echte Vision Analyse uitvoeren
+    // 6. Echte Vision Analyse uitvoeren
     const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-5-mini", // of het model dat je nu gekozen hebt
       messages: [
         {
           role: "system",
@@ -93,7 +94,7 @@ Houd de toon vriendelijk, praktisch, to-the-point en direct uitvoerbaar. Gebruik
           content: [
             { 
               type: "text", 
-              text: "Analyseer deze kamer en geef een gedetailleerd opruimadvies met concrete stappen." 
+              text: "Analyseer deze kamer en geef een gedetailed opruimadvies met concrete stappen." 
             },
             {
               type: "image_url",
@@ -104,7 +105,7 @@ Houd de toon vriendelijk, praktisch, to-the-point en direct uitvoerbaar. Gebruik
           ]
         }
       ],
-      max_tokens: 600
+      max_completion_tokens: 600 // <--- VERANDERD VAN max_tokens NAAR max_completion_tokens!
     });
 
     const analysisText = response.choices[0].message.content;
