@@ -1,6 +1,5 @@
-const { OpenAI, toFile } = require('openai');
+const { OpenAI } = require('openai');
 
-// Vercel instructie: verhoog de body-parser limiet voor grote base64 afbeeldingen
 const config = {
   api: {
     bodyParser: {
@@ -10,7 +9,6 @@ const config = {
 };
 
 const handler = async function (req, res) {
-  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -24,34 +22,23 @@ const handler = async function (req, res) {
   }
 
   try {
-    const { image, room } = req.body || {};
-
-    if (!image) {
-      return res.status(400).json({ error: 'Geen afbeelding ontvangen in de body' });
-    }
+    const { room } = req.body || {};
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // 1. Zet de Base64-afbeelding om naar een Buffer
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-    const imageBuffer = Buffer.from(base64Data, 'base64');
+    const prompt = `A clean, perfectly organized, tidy and beautiful ${room || "room"}. No clothes on the floor or bed, no mess, well-lit modern interior photography, professional interior design.`;
 
-    // 2. Converteer de Buffer naar een virtueel bestand voor de OpenAI SDK
-    const imageFile = await toFile(imageBuffer, 'original_room.png', { type: 'image/png' });
-
-    // 3. Image-to-Image Edit API call
-    const response = await openai.images.edit({
-      model: "gpt-image-1.5",
-      image: imageFile,
-      prompt: `Transform this exact ${room || "room"} into a clean, tidy, and perfectly organized version. Keep the exact same room structure, walls, window placement, bed/furniture position, and floor type. Remove all clutter, clothes on the floor or bed, trash, and mess. Make it clean and well-lit while preserving the original layout.`,
+    const response = await openai.images.generate({
+      model: "gpt-image-1", // <--- Aangepast naar het model uit jouw lijst
+      prompt: prompt,
       n: 1,
       size: "1024x1024",
     });
 
-    const imageUrl = response?.data?.[0]?.url || response?.data?.[0]?.b64_json;
+    const imageUrl = response?.data?.[0]?.url;
 
     if (!imageUrl) {
-      return res.status(500).json({ error: 'Geen afbeelding ontvangen van OpenAI Edit API' });
+      return res.status(500).json({ error: 'Geen afbeelding ontvangen van OpenAI' });
     }
 
     return res.status(200).json({
