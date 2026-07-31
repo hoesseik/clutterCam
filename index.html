@@ -999,15 +999,20 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
         if (!improveResp.ok) throw new Error("Improve request failed");
 
-        const improveData = await improveResp.json();
-
+       const improveData = await improveResp.json();
         const img = document.getElementById('improvedImage');
         
-        // Zorg ervoor dat we veilig controleren of het een string is
-        const rawImage = improveData.improvedImage || "";
-        const imageSource = (typeof rawImage === 'string' && rawImage.startsWith('data:')) 
-            ? rawImage 
-            : "data:image/png;base64," + rawImage;
+        // 1. Haal de waarde op (controleer of het ingepakt zit in een object)
+        let rawImage = improveData.improvedImage;
+        if (rawImage && typeof rawImage === 'object') {
+            rawImage = rawImage.url || rawImage.b64_json || rawImage.image || "";
+        }
+
+        // 2. Bouw de juiste img source op
+        let imageSource = rawImage || "";
+        if (imageSource && !imageSource.startsWith('data:') && !imageSource.startsWith('http')) {
+            imageSource = "data:image/png;base64," + imageSource;
+        }
 
         img.src = imageSource;
         img.style.display = "block";
