@@ -44,28 +44,35 @@ const handler = async function (req, res) {
     }
 
     const { room } = req.body || {};
-
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // Hiermee genereert OpenAI een schone versie van de kamer
     const prompt = `A clean, perfectly organized, tidy and beautiful ${room || "room"}. No clothes on the floor or bed, no mess, well-lit modern interior photography, professional interior design.`;
 
+    // Aanroep naar gpt-image-1
     const response = await openai.images.generate({
-      model: "gpt-image-1", // <--- DIT MOET EXACT gpt-image-1 ZIJN
+      model: "gpt-image-1",
       prompt: prompt,
       n: 1,
       size: "1024x1024",
     });
 
-    const imageUrl = response?.data?.[0]?.url;
+    // Vang zowel URL als Base64 op
+    const urlData = response?.data?.[0]?.url;
+    const b64Data = response?.data?.[0]?.b64_json;
 
-    if (!imageUrl) {
+    let finalImageUrl = urlData;
+    if (!finalImageUrl && b64Data) {
+      finalImageUrl = `data:image/png;base64,${b64Data}`;
+    }
+
+    if (!finalImageUrl) {
+      console.error('OpenAI gaf geen URL of Base64 terug:', JSON.stringify(response));
       return res.status(500).json({ error: 'Geen afbeelding ontvangen van OpenAI' });
     }
 
     return res.status(200).json({
       message: 'Image improved successfully',
-      improvedImage: imageUrl,
+      improvedImage: finalImageUrl,
     });
 
   } catch (error) {
