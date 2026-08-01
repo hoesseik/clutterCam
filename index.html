@@ -726,11 +726,24 @@ async function loadHistory() {
              } else {
              img.style.display = 'none'; // Verbergt het plaatje als er geen foto is
              }
+const label = document.createElement('div');
+label.className = "history-label";
 
-                const label = document.createElement('div');
-                label.className = "history-label";
-                label.innerText = new Date(item.createdAt).toLocaleString();
+// Pak de datum, of deze nou 'createdAt' of 'date' heet
+const rawDate = item.createdAt || item.date;
 
+if (rawDate) {
+    label.innerText = new Date(rawDate).toLocaleString('nl-NL', {
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit'
+    });
+} else {
+    // Fallback voor het geval er helemaal geen datum bekend is
+    label.innerText = "Recent gescand";
+}
                 const badge = document.createElement('div');
                 badge.className = "badge-room";
                 badge.innerText = item.room?.toUpperCase() || "";
@@ -997,13 +1010,15 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         document.getElementById('analysisOutput').innerText = analyzeData.analysis || "";
 
         // 2. IMPROVE REQUEST
+   // 2. IMPROVE REQUEST
         const improveResp = await fetch("/api/improve", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 image: imageBase64,
                 id: lastAnalysisId,
-                analysis: analyzeData.analysis || ""
+                analysis: analyzeData.analysis || "",
+                room: selectedRoom // <--- DEZE REGEL IS TOEGEVOEGD!
             })
         });
 

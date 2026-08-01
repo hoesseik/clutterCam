@@ -24,6 +24,7 @@ const handler = async function (req, res) {
   }
 
   try {
+    // Check de environment variables voor de API key
     if (!process.env.OPENAI_API_KEY) {
       const envPath = path.join(process.cwd(), '.env.local');
       if (fs.existsSync(envPath)) {
@@ -43,12 +44,16 @@ const handler = async function (req, res) {
       throw new Error('OPENAI_API_KEY is niet ingesteld.');
     }
 
+    // Haal de categorie op, of val terug op "kamer"
     const { room } = req.body || {};
+    const roomType = room ? room.toLowerCase() : "kamer";
+
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const prompt = `A clean, perfectly organized, tidy and beautiful ${room || "room"}. No clothes on the floor or bed, no mess, well-lit modern interior photography, professional interior design.`;
+    // Dynamische Nederlandse prompt, afgestemd op jouw gekozen knop
+    const prompt = `Een fotorealistische afbeelding van een perfect schone, opgeruimde en prachtig ingerichte ${roomType}. Geen rommel op de grond, goed verlicht, modern en professioneel interieur design.`;
 
-    // Aanroep naar gpt-image-1
+    // Aangepast naar het officiële DALL-E 3 model
     const response = await openai.images.generate({
       model: "gpt-image-1",
       prompt: prompt,
@@ -56,7 +61,6 @@ const handler = async function (req, res) {
       size: "1024x1024",
     });
 
-    // Vang zowel URL als Base64 op
     const urlData = response?.data?.[0]?.url;
     const b64Data = response?.data?.[0]?.b64_json;
 
@@ -66,7 +70,6 @@ const handler = async function (req, res) {
     }
 
     if (!finalImageUrl) {
-      console.error('OpenAI gaf geen URL of Base64 terug:', JSON.stringify(response));
       return res.status(500).json({ error: 'Geen afbeelding ontvangen van OpenAI' });
     }
 
