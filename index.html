@@ -836,32 +836,48 @@ document.getElementById('deleteAllBtn').addEventListener('click', async () => {
 --------------------------------------------------- */
 async function loadProfile() {
     try {
-                const resp = await fetch("/api/profile");
-                const data = await resp.json();
+        const resp = await fetch("/api/profile");
+        const data = await resp.json();
 
-        document.getElementById('profileTotalScans').innerText = data.totalScans;
-        document.getElementById('profileMostRoom').innerText =
+        // 1. Totaal scans en kamer (veilig opvangen met standaarden)
+        document.getElementById('profileTotalScans').innerText = data.totalScans ?? 0;
+        document.getElementById('profileMostRoom').innerText = 
             data.mostScannedRoom ? data.mostScannedRoom.toUpperCase() : "-";
 
+        // 2. Laatste scan afhandeling + veilige datum
         if (data.lastScan) {
-            document.getElementById('profileLastScan').innerText =
-                new Date(data.lastScan.createdAt).toLocaleString();
+            const rawDate = data.lastScan.createdAt || data.lastScan.date;
+            document.getElementById('profileLastScan').innerText = rawDate 
+                ? new Date(rawDate).toLocaleString('nl-NL', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                  }) 
+                : "Recent gescand";
 
             const img = document.getElementById('profileLastImage');
-            img.src = data.lastScan.improved || data.lastScan.original;
-            img.style.display = "block";
+            if (img) {
+                img.src = data.lastScan.improved || data.lastScan.original || "";
+                img.style.display = (data.lastScan.improved || data.lastScan.original) ? "block" : "none";
+            }
         } else {
             document.getElementById('profileLastScan').innerText = "-";
-            document.getElementById('profileLastImage').style.display = "none";
+            const img = document.getElementById('profileLastImage');
+            if (img) img.style.display = "none";
         }
 
-        drawRoomScoreChart(data.scoresByRoom);
-        drawTrendChart(data.trend);
-        updateBadges(data.bestScan, data.worstScan);
+        // 3. Grafieken & badges alleen tekenen als de functies én data bestaan
+        if (typeof drawRoomScoreChart === 'function' && data.scoresByRoom) {
+            drawRoomScoreChart(data.scoresByRoom);
+        }
+        if (typeof drawTrendChart === 'function' && data.trend) {
+            drawTrendChart(data.trend);
+        }
+        if (typeof updateBadges === 'function') {
+            updateBadges(data.bestScan, data.worstScan);
+        }
 
     } catch (err) {
         console.error("Kon profiel niet laden:", err);
-        showToast("Kon profiel niet laden.");
     }
 }
 
