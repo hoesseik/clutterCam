@@ -1034,7 +1034,18 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         document.getElementById('analysisOutput').innerText = analyzeData.analysis || "";
 
         // 2. IMPROVE REQUEST
-   // 2. IMPROVE REQUEST
+  const improveResp = await fetch("/api/improve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                image: imageBase64,
+                id: lastAnalysisId,
+                analysis: analyzeData.analysis || "",
+                room: selectedRoom
+            })
+        });
+
+        if (!improveResp.ok) throw new Error("Improve request failed");
      const improveData = await improveResp.json();
         console.log("Response van /api/improve:", improveData);
 
