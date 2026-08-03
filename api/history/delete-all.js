@@ -1,5 +1,8 @@
 const handler = async function (req, res) {
-  res.status(200).json({ message: "All history deleted" });
+  return res.status(200).json({ 
+    success: true, 
+    message: "All history deleted" 
+  });
 };
 
 module.exports = handler;
