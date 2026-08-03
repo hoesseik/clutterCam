@@ -802,19 +802,27 @@ async function deleteHistoryItem(id) {
     if (!confirm("Weet je zeker dat je deze scan wilt verwijderen?")) return;
 
     try {
-        const resp = await fetch(`/api/history/delete?id=${id}`, { method: "DELETE" });
-        const data = await resp.json();
+        // 1. Haal alle scans op uit de browser-opslag
+        let items = JSON.parse(localStorage.getItem('clutter_history') || '[]');
 
-        if (data.success) {
-            showToast("Scan verwijderd.");
-            document.getElementById('historyModal').style.display = "none";
-            await loadHistory();
-        } else {
-            showToast("Verwijderen mislukt.");
-        }
+        // 2. Filter de specifieke scan met dit ID eruit
+        items = items.filter(item => item.id !== id && item.id != id);
+
+        // 3. Sla de opgeschoonde lijst weer op
+        localStorage.setItem('clutter_history', JSON.stringify(items));
+
+        if (typeof showToast === 'function') showToast("Scan verwijderd.");
+
+        // 4. Sluit het detailscherm (modal) als dat open staat
+        const modal = document.getElementById('historyModal');
+        if (modal) modal.style.display = "none";
+
+        // 5. Ververs direct het scherm en het profiel
+        if (typeof loadHistory === 'function') await loadHistory();
+        if (typeof loadProfile === 'function') await loadProfile();
+
     } catch (err) {
         console.error("Fout bij verwijderen:", err);
-        showToast("Kon scan niet verwijderen.");
     }
 }
 
@@ -1027,20 +1035,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 
         // 2. IMPROVE REQUEST
    // 2. IMPROVE REQUEST
-        const improveResp = await fetch("/api/improve", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                image: imageBase64,
-                id: lastAnalysisId,
-                analysis: analyzeData.analysis || "",
-                room: selectedRoom // <--- DEZE REGEL IS TOEGEVOEGD!
-            })
-        });
-
-        if (!improveResp.ok) throw new Error("Improve request failed");
-
-        const improveData = await improveResp.json();
+     const improveData = await improveResp.json();
         console.log("Response van /api/improve:", improveData);
 
         const img = document.getElementById('improvedImage');
@@ -1055,18 +1050,36 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
             rawImage = rawImage.b64_json || rawImage.url || rawImage.image || Object.values(rawImage)[0] || "";
         }
 
+        let finalImageSource = "";
         if (typeof rawImage === 'string' && rawImage.length > 0) {
-            let imageSource = rawImage;
-            if (!imageSource.startsWith('data:') && !imageSource.startsWith('http')) {
-                imageSource = "data:image/png;base64," + imageSource;
+            finalImageSource = rawImage;
+            if (!finalImageSource.startsWith('data:') && !finalImageSource.startsWith('http')) {
+                finalImageSource = "data:image/png;base64," + finalImageSource;
             }
-            img.src = imageSource;
+            img.src = finalImageSource;
             img.style.display = "block";
         } else {
             console.error("Geen geldige afbeelding string gevonden in:", improveData.improvedImage);
         }
 
-        await loadHistory();
+        // --- 💾 NIEUW: SLA DE SCAN OP IN DE BROWSER (LOCALSTORAGE) ---
+        const newScan = {
+            id: lastAnalysisId || Date.now(),
+            room: selectedRoom || "Woonkamer",
+            createdAt: new Date().toISOString(),
+            original: imageBase64,
+            improved: finalImageSource
+        };
+
+        const currentHistory = JSON.parse(localStorage.getItem('clutter_history') || '[]');
+        currentHistory.push(newScan);
+        localStorage.setItem('clutter_history', JSON.stringify(currentHistory));
+        // -------------------------------------------------------------
+
+        // Ververs geschiedenis én profiel direct!
+        if (typeof loadHistory === 'function') await loadHistory();
+        if (typeof loadProfile === 'function') await loadProfile();
+        
         showToast("Scan voltooid!");
 
     } catch (err) {
@@ -1076,7 +1089,6 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         hideLoading();
     }
 });
-
 /* ---------------------------------------------------
     INITIAL LOAD
 --------------------------------------------------- */
