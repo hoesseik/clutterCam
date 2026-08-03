@@ -699,51 +699,55 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 
 async function loadHistory() {
     try {
-        const resp = await fetch("/api/history");
-        const data = await resp.json();
+        let items = JSON.parse(localStorage.getItem('clutter_history') || '[]');
+
+        // Fallback: als localStorage nog leeg is, haal op via API
+        if (items.length === 0) {
+            try {
+                const resp = await fetch("/api/history");
+                const data = await resp.json();
+                if (data && data.items && data.items.length > 0) {
+                    items = data.items;
+                    localStorage.setItem('clutter_history', JSON.stringify(items));
+                }
+            } catch (e) {}
+        }
+
         const list = document.getElementById('historyList');
+        const historyBox = document.getElementById('historyBox');
+        if (!list) return;
         list.innerHTML = "";
 
-        if (!data.items || data.items.length === 0) {
-            document.getElementById('historyBox').style.display = "none";
+        if (!items || items.length === 0) {
+            if (historyBox) historyBox.style.display = "none";
             return;
         }
 
-        document.getElementById('historyBox').style.display = "block";
+        if (historyBox) historyBox.style.display = "block";
 
-        data.items
-            .filter(item => activeFilter === "all" || item.room === activeFilter)
+        items
+            .filter(item => typeof activeFilter === 'undefined' || activeFilter === "all" || item.room === activeFilter)
             .forEach(item => {
                 const thumb = document.createElement('div');
                 thumb.className = "history-thumb";
                 thumb.dataset.id = item.id;
 
-             const img = document.createElement('img');
-             const imageSource = item.improved || item.original;
+                const img = document.createElement('img');
+                const imageSource = item.improved || item.original;
 
-             if (imageSource) {
-             img.src = imageSource + '?t=' + Date.now();
-             } else {
-             img.style.display = 'none'; // Verbergt het plaatje als er geen foto is
-             }
-const label = document.createElement('div');
-label.className = "history-label";
+                if (imageSource) {
+                    img.src = imageSource;
+                } else {
+                    img.style.display = 'none';
+                }
 
-// Pak de datum, of deze nou 'createdAt' of 'date' heet
-const rawDate = item.createdAt || item.date;
+                const label = document.createElement('div');
+                label.className = "history-label";
+                const rawDate = item.createdAt || item.date;
+                label.innerText = rawDate 
+                    ? new Date(rawDate).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
+                    : "Recent gescand";
 
-if (rawDate) {
-    label.innerText = new Date(rawDate).toLocaleString('nl-NL', {
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric',
-        hour: '2-digit', 
-        minute: '2-digit'
-    });
-} else {
-    // Fallback voor het geval er helemaal geen datum bekend is
-    label.innerText = "Recent gescand";
-}
                 const badge = document.createElement('div');
                 badge.className = "badge-room";
                 badge.innerText = item.room?.toUpperCase() || "";
@@ -752,13 +756,15 @@ if (rawDate) {
                 thumb.appendChild(label);
                 thumb.appendChild(badge);
 
-                thumb.addEventListener('click', () => openHistoryDetail(item.id));
+                thumb.addEventListener('click', () => {
+                    if (typeof openHistoryDetail === 'function') openHistoryDetail(item.id);
+                });
 
                 list.appendChild(thumb);
             });
 
     } catch (err) {
-        console.error("Kon history niet laden:", err);
+        console.error("Fout bij laden geschiedenis:", err);
     }
 }
 
@@ -815,69 +821,63 @@ async function deleteHistoryItem(id) {
 document.getElementById('deleteAllBtn').addEventListener('click', async () => {
     if (!confirm("Weet je zeker dat je ALLE scans wilt verwijderen?")) return;
 
-    try {
-        const resp = await fetch("/api/history/delete-all", { method: "DELETE" });
-        const data = await resp.json();
+    // 1. Wis het geheugen in de browser
+    localStorage.removeItem('clutter_history');
 
-        if (data.success) {
-            showToast("Alle scans verwijderd.");
-            await loadHistory();
-        } else {
-            showToast("Verwijderen mislukt.");
-        }
-    } catch (err) {
-        console.error("Kon niet verwijderen:", err);
-        showToast("Kon niet verwijderen.");
-    }
+    // 2. Toon een melding
+    if (typeof showToast === 'function') showToast("Alle scans verwijderd.");
+
+    // 3. Ververs de geschiedenis en het profiel op het scherm
+    if (typeof loadHistory === 'function') await loadHistory();
+    if (typeof loadProfile === 'function') await loadProfile();
 });
 
 /* ---------------------------------------------------
    PROFILE & CHARTS
 --------------------------------------------------- */
+// 2. Profiel statistieken automatisch uitrekenen
 async function loadProfile() {
-    try {
-        const resp = await fetch("/api/profile");
-        const data = await resp.json();
+    const items = JSON.parse(localStorage.getItem('clutter_history') || '[]');
 
-        // 1. Totaal scans en kamer (veilig opvangen met standaarden)
-        document.getElementById('profileTotalScans').innerText = data.totalScans ?? 0;
-        document.getElementById('profileMostRoom').innerText = 
-            data.mostScannedRoom ? data.mostScannedRoom.toUpperCase() : "-";
+    // Totaal aantal scans
+    const totalScansEl = document.getElementById('profileTotalScans');
+    if (totalScansEl) totalScansEl.innerText = items.length;
 
-        // 2. Laatste scan afhandeling + veilige datum
-        if (data.lastScan) {
-            const rawDate = data.lastScan.createdAt || data.lastScan.date;
-            document.getElementById('profileLastScan').innerText = rawDate 
-                ? new Date(rawDate).toLocaleString('nl-NL', {
-                    day: '2-digit', month: '2-digit', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
-                  }) 
+    // Meest gescande kamer berekenen
+    const roomCounts = {};
+    items.forEach(item => {
+        if (item.room) {
+            const r = item.room.toLowerCase();
+            roomCounts[r] = (roomCounts[r] || 0) + 1;
+        }
+    });
+    let mostRoom = "-";
+    let maxCount = 0;
+    for (const [r, c] of Object.entries(roomCounts)) {
+        if (c > maxCount) { maxCount = c; mostRoom = r; }
+    }
+    const mostRoomEl = document.getElementById('profileMostRoom');
+    if (mostRoomEl) mostRoomEl.innerText = mostRoom !== "-" ? mostRoom.toUpperCase() : "-";
+
+    // Laatste scan tonen
+    const lastScan = items.length > 0 ? items[items.length - 1] : null;
+    const lastScanEl = document.getElementById('profileLastScan');
+    const lastImgEl = document.getElementById('profileLastImage');
+
+    if (lastScan) {
+        const rawDate = lastScan.createdAt || lastScan.date;
+        if (lastScanEl) {
+            lastScanEl.innerText = rawDate 
+                ? new Date(rawDate).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
                 : "Recent gescand";
-
-            const img = document.getElementById('profileLastImage');
-            if (img) {
-                img.src = data.lastScan.improved || data.lastScan.original || "";
-                img.style.display = (data.lastScan.improved || data.lastScan.original) ? "block" : "none";
-            }
-        } else {
-            document.getElementById('profileLastScan').innerText = "-";
-            const img = document.getElementById('profileLastImage');
-            if (img) img.style.display = "none";
         }
-
-        // 3. Grafieken & badges alleen tekenen als de functies én data bestaan
-        if (typeof drawRoomScoreChart === 'function' && data.scoresByRoom) {
-            drawRoomScoreChart(data.scoresByRoom);
+        if (lastImgEl) {
+            lastImgEl.src = lastScan.improved || lastScan.original || "";
+            lastImgEl.style.display = "block";
         }
-        if (typeof drawTrendChart === 'function' && data.trend) {
-            drawTrendChart(data.trend);
-        }
-        if (typeof updateBadges === 'function') {
-            updateBadges(data.bestScan, data.worstScan);
-        }
-
-    } catch (err) {
-        console.error("Kon profiel niet laden:", err);
+    } else {
+        if (lastScanEl) lastScanEl.innerText = "-";
+        if (lastImgEl) lastImgEl.style.display = "none";
     }
 }
 
