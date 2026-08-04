@@ -699,19 +699,8 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 
 async function loadHistory() {
     try {
-        let items = JSON.parse(localStorage.getItem('clutter_history') || '[]');
-
-        // Fallback: als localStorage nog leeg is, haal op via API
-        if (items.length === 0) {
-            try {
-                const resp = await fetch("/api/history");
-                const data = await resp.json();
-                if (data && data.items && data.items.length > 0) {
-                    items = data.items;
-                    localStorage.setItem('clutter_history', JSON.stringify(items));
-                }
-            } catch (e) {}
-        }
+        // 1. Lees ENKEL uit de browser-opslag
+        const items = JSON.parse(localStorage.getItem('clutter_history') || '[]');
 
         const list = document.getElementById('historyList');
         const historyBox = document.getElementById('historyBox');
@@ -725,6 +714,7 @@ async function loadHistory() {
 
         if (historyBox) historyBox.style.display = "block";
 
+        // 2. Bouw de lijst op het scherm op
         items
             .filter(item => typeof activeFilter === 'undefined' || activeFilter === "all" || item.room === activeFilter)
             .forEach(item => {
@@ -750,7 +740,7 @@ async function loadHistory() {
 
                 const badge = document.createElement('div');
                 badge.className = "badge-room";
-                badge.innerText = item.room?.toUpperCase() || "";
+                badge.innerText = item.room ? item.room.toUpperCase() : "";
 
                 thumb.appendChild(img);
                 thumb.appendChild(label);
