@@ -48,16 +48,14 @@ const handler = async function (req, res) {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // Prompt die de gemaakte analyse gebruikt om jouw échte kamer na te bouwen
-    const prompt = `Een fotorealistische afbeelding van de volgende specifieke ruimte: ${analysis || roomType}. 
+    // 💡 NIEUWE DYNAMISCHE PROMPT: Geen verplichte balken meer!
+    const prompt = `Genereer een fotorealistische afbeelding van precies deze ruimte, gebaseerd op deze beschrijving: "${analysis || roomType}".
 
-    INSTRUCTIES:
-    - Behoud exact de unieke architectuur, muren, ramen, schuine plafonds en houten balken/constructies.
-    - Behoud de herkenbare meubels (zoals het specifieke bed en krukje), maar maak de opstelling netjes en strak.
-    - Verwijder alle rommel, losse kleding en rommelige details.
-    - Maak de ruimte perfect schoon, opgeruimd, goed verlicht en professioneel gestyled.`;
+    STRIKTE INSTRUCTIES:
+    1. Neem de bestaande architectuur, de indeling en de grote meubels (zoals banken, tafels, kasten) uit de beschrijving EXACT over.
+    2. Verander GEEN structurele elementen. Voeg absoluut GEEN ongevraagde elementen (zoals balken of schuine daken) toe, tenzij dit specifiek in de beschrijving staat.
+    3. Het enige wat je moet veranderen: verwijder ALLE rommel (zoals pizzadozen, flessen, rondslingerende kleding, afval) en maak de kamer perfect schoon, opgeruimd en sfeervol verlicht.`;
 
-    // Gebruik hier het model dat wel in jouw lijst staat: gpt-image-1
     const response = await openai.images.generate({
       model: "gpt-image-1",
       prompt: prompt,
