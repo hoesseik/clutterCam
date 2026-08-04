@@ -24,7 +24,6 @@ const handler = async function (req, res) {
   }
 
   try {
-    // Check de environment variables voor de API key
     if (!process.env.OPENAI_API_KEY) {
       const envPath = path.join(process.cwd(), '.env.local');
       if (fs.existsSync(envPath)) {
@@ -44,16 +43,21 @@ const handler = async function (req, res) {
       throw new Error('OPENAI_API_KEY is niet ingesteld.');
     }
 
-    // Haal de categorie op, of val terug op "kamer"
-    const { room } = req.body || {};
+    const { room, analysis } = req.body || {};
     const roomType = room ? room.toLowerCase() : "kamer";
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // Dynamische Nederlandse prompt, afgestemd op jouw gekozen knop
-    const prompt = `Een fotorealistische afbeelding van een perfect schone, opgeruimde en prachtig ingerichte ${roomType}. Geen rommel op de grond, goed verlicht, modern en professioneel interieur design.`;
+    // Prompt die de gemaakte analyse gebruikt om jouw échte kamer na te bouwen
+    const prompt = `Een fotorealistische afbeelding van de volgende specifieke ruimte: ${analysis || roomType}. 
 
-    // Aangepast naar het officiële DALL-E 3 model
+    INSTRUCTIES:
+    - Behoud exact de unieke architectuur, muren, ramen, schuine plafonds en houten balken/constructies.
+    - Behoud de herkenbare meubels (zoals het specifieke bed en krukje), maar maak de opstelling netjes en strak.
+    - Verwijder alle rommel, losse kleding en rommelige details.
+    - Maak de ruimte perfect schoon, opgeruimd, goed verlicht en professioneel gestyled.`;
+
+    // Gebruik hier het model dat wel in jouw lijst staat: gpt-image-1
     const response = await openai.images.generate({
       model: "gpt-image-1",
       prompt: prompt,
