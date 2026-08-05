@@ -1008,33 +1008,26 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         const imageBase64 = await fileToBase64(capturedImage);
 
         // 1. ANALYZE REQUEST
-        const analyzeResp = await fetch("/api/analyze", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                image: imageBase64,
-                room: selectedRoom
-            })
-        });
+        // 1. Analyseer de foto
+const analyzeRes = await fetch('/api/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageBase64 })
+});
+const analyzeData = await analyzeRes.json();
 
-        if (!analyzeResp.ok) throw new Error("Analyze request failed");
+// 2. Toon het Nederlandse advies op het scherm
+document.getElementById('analysisResult').innerText = analyzeData.analysis;
 
-        const analyzeData = await analyzeResp.json();
-        lastAnalysisId = analyzeData.id;
-
-        document.getElementById('analysisOutput').innerText = analyzeData.analysis || "";
-
-        // 2. IMPROVE REQUEST
-  const improveResp = await fetch("/api/improve", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                image: imageBase64,
-                id: lastAnalysisId,
-                analysis: analyzeData.analysis || "",
-                room: selectedRoom
-            })
-        });
+// 3. Genereer de opgeruimde foto met de gedetailleerde visuele beschrijving!
+const improveRes = await fetch('/api/improve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+        room: selectedRoom, 
+        analysis: analyzeData.visualDescription || analyzeData.analysis // 👈 Gebruikt nu de exacte visuele kenmerken!
+    })
+});
 
         if (!improveResp.ok) throw new Error("Improve request failed");
      const improveData = await improveResp.json();

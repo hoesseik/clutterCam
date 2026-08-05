@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const { OpenAI } = require('openai');
 
-// Vercel instructie: verhoog de body-parser limiet voor grote base64 afbeeldingen
 const config = {
   api: {
     bodyParser: {
@@ -12,7 +11,6 @@ const config = {
 };
 
 const handler = async function (req, res) {
-  // 1. CORS Headers inschakelen
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -26,7 +24,6 @@ const handler = async function (req, res) {
   }
 
   try {
-    // 2. Probeer OPENAI_API_KEY uit process.env te halen, en fallback naar .env.local
     if (!process.env.OPENAI_API_KEY) {
       const envPath = path.join(process.cwd(), '.env.local');
       if (fs.existsSync(envPath)) {
@@ -35,24 +32,17 @@ const handler = async function (req, res) {
           const match = content.match(/^OPENAI_API_KEY=(.+)$/m);
           if (match && match[1]) {
             process.env.OPENAI_API_KEY = match[1].trim().replace(/^"|"$/g, '');
-            console.log('OPENAI_API_KEY geladen uit .env.local (redacted).');
-          } else {
-            console.log('.env.local gevonden maar OPENAI_API_KEY niet aanwezig in dat bestand.');
           }
         } catch (e) {
           console.log('Fout bij lezen van .env.local:', e.message);
         }
-      } else {
-        console.log('.env.local niet gevonden in projectroot.');
       }
     }
 
-    // 3. Controleer nogmaals of de key aanwezig is
     if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is niet ingesteld in Vercel Environment Variables of .env.local.');
+      throw new Error('OPENAI_API_KEY is niet ingesteld.');
     }
 
-    // 4. Afbeelding uit de request body halen
     const { image } = req.body || {};
     if (!image) {
       return res.status(400).json({ error: 'Geen afbeelding ontvangen in de body' });
@@ -62,39 +52,42 @@ const handler = async function (req, res) {
       ? image 
       : `data:image/jpeg;base64,${image}`;
 
-    // 5. OpenAI client initialiseren
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // 6. Echte Vision Analyse uitvoeren
-    // 6. Echte Vision Analyse uitvoeren
+    // Vraag GPT-4 Vision om ZOWEL opruimadvies ALS een gedetailleerde visuele beschrijving in JSON
     const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo", // of het model dat je nu gekozen hebt
+      model: "gpt-4-turbo",
+      response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content: `Je bent een professionele opruim- en organisatie-expert. 
-Analyseer de foto van de kamer grondig en geef een uitgebreid, helder en motiverend opruimadvies.
+          content: `Je bent een opruimexpert én een professionele interieurarchitect.
+Analyseer de foto van de kamer grondig en geef verplicht een antwoord in JSON formaat met exact twee velden: "advice" en "visual_description".
 
-Structureer je antwoord ALTIJD in de volgende onderdelen:
-
-📍 **Type ruimte**: [bijv. Slaapkamer, Bureau, Woonkamer]
-🧹 **Status van de kamer**: [In 1-2 zinnen een korte samenvatting van wat er ligt]
+1. "advice": Het opruimadvies in het Nederlands voor de gebruiker. Structureer als:
+📍 **Type ruimte**: [Slaapkamer, Keuken, Woonkamer, etc.]
+🧹 **Status van de kamer**: [Korte samenvatting]
 
 📋 **Concreet Stappenplan**:
 1. **[Stap 1: Afval & Vaat]**: ...
-2. **[Stap 2: Kleding]**: ...
+2. **[Stap 2: Kleding/Spullen]**: ...
 3. **[Stap 3: Oppervlakken]**: ...
 4. **[Stap 4: Ordenen & Opbergen]**: ...
 5. **[Stap 5: Laatste puntjes op de i]**: ...
 
-Houd de toon vriendelijk, praktisch, to-the-point en direct uitvoerbaar. Gebruik duidelijke opmaak met opsommingstekens.`
+2. "visual_description": Een zéér gedetailleerde Engelse visuele beschrijving van de ARCHITECTUUR, MATERIALEN, KLEUREN en UNIEKE DECORATIES van de ruimte (ZONDER de losse rommel).
+Beschrijf expliciet:
+- Exacte kleuren en materialen van kasten/meubels (bijv. "dark charcoal blue wooden cabinets", "concrete plaster wall").
+- Specifieke wanddecoratie en details (bijv. "mounted taxidermy ram head on the right wall", "wooden rack with hanging stainless steel kitchen tools").
+- Apparaten, verlichting en vloeren (bijv. "freestanding stainless steel stove", "rustic wooden stool").
+Dit veld dient als directe prompt voor een afbeeldingsgenerator om DEZELFDE kamer in opgeruimde staat te tekenen.`
         },
         {
           role: "user",
           content: [
             { 
               type: "text", 
-              text: "Analyseer deze kamer en geef een gedetailed opruimadvies met concrete stappen." 
+              text: "Analyseer deze kamer en geef de JSON output met opruimadvies en visuele beschrijving." 
             },
             {
               type: "image_url",
@@ -105,15 +98,24 @@ Houd de toon vriendelijk, praktisch, to-the-point en direct uitvoerbaar. Gebruik
           ]
         }
       ],
-      max_completion_tokens: 600 // <--- VERANDERD VAN max_tokens NAAR max_completion_tokens!
+      max_completion_tokens: 1000
     });
 
-    const analysisText = response.choices[0].message.content;
+    const jsonString = response.choices[0].message.content;
+    let parsedData = {};
+    try {
+      parsedData = JSON.parse(jsonString);
+    } catch (e) {
+      parsedData = {
+        advice: jsonString,
+        visual_description: ""
+      };
+    }
 
-    // 7. Geef de echte analyse terug
     return res.status(200).json({
       id: Date.now().toString(),
-      analysis: analysisText,
+      analysis: parsedData.advice || "",
+      visualDescription: parsedData.visual_description || ""
     });
 
   } catch (error) {
