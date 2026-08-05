@@ -1065,6 +1065,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         }
 
         // --- 💾 NIEUW: SLA DE SCAN OP IN DE BROWSER (LOCALSTORAGE) ---
+        // --- 💾 NIEUW: SLA DE SCAN OP IN DE BROWSER (LOCALSTORAGE) ---
         const newScan = {
             id: lastAnalysisId || Date.now(),
             room: selectedRoom || "Woonkamer",
@@ -1073,9 +1074,24 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
             improved: finalImageSource
         };
 
-        const currentHistory = JSON.parse(localStorage.getItem('clutter_history') || '[]');
+        // Let op: hier gebruiken we 'let' in plaats van 'const'
+        let currentHistory = JSON.parse(localStorage.getItem('clutter_history') || '[]');
         currentHistory.push(newScan);
-        localStorage.setItem('clutter_history', JSON.stringify(currentHistory));
+
+        // 🚨 UPDATE: Bewaar maximaal de 3 meest recente scans
+        if (currentHistory.length > 3) {
+            currentHistory = currentHistory.slice(currentHistory.length - 3);
+        }
+
+        try {
+            localStorage.setItem('clutter_history', JSON.stringify(currentHistory));
+        } catch (e) {
+            // Noodoplossing als 3 scans alsnog te groot zijn
+            if (e.name === 'QuotaExceededError' || e.code === 22) {
+                console.warn("Lokale opslag was vol, oudere scans zijn gewist.");
+                localStorage.setItem('clutter_history', JSON.stringify([newScan]));
+            }
+        }
         // -------------------------------------------------------------
 
         // Ververs geschiedenis én profiel direct!
