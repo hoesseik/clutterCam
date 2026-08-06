@@ -1017,7 +1017,7 @@ const analyzeRes = await fetch('/api/analyze', {
 const analyzeData = await analyzeRes.json();
 
 // 2. Toon het Nederlandse advies op het scherm (veilig tegen null-fouten)
-const analysisElement = document.getElementById('analysisResult') || document.getElementById('analysisText') || document.getElementById('advice');
+const analysisElement = document.getElementById('analysisOutput') || document.getElementById('analysisText') || document.getElementById('advice');
 if (analysisElement) {
     analysisElement.innerText = analyzeData.analysis;
 } else {
