@@ -1016,13 +1016,19 @@ const analyzeRes = await fetch('/api/analyze', {
 });
 const analyzeData = await analyzeRes.json();
 
-// 2. Toon het Nederlandse advies op het scherm (veilig tegen null-fouten)
-const analysisElement = document.getElementById('analysisOutput') || document.getElementById('analysisText') || document.getElementById('advice');
-if (analysisElement) {
-    analysisElement.innerText = analyzeData.analysis;
-} else {
-    console.warn("Geen HTML-element gevonden om het advies in te tonen.");
-}
+        // 1. Maak de analyse-box zichtbaar op de pagina
+        const analysisBox = document.getElementById('analysisBox');
+        if (analysisBox) {
+            analysisBox.style.display = 'block';
+        }
+
+        // 2. Vul de tekst veilig in het juiste vak (controleert automatisch op 'analysisOutput' én 'analysisResult')
+        const outputElem = document.getElementById('analysisOutput') || document.getElementById('analysisResult');
+        if (outputElem) {
+            outputElem.innerText = analyzeData.analysis || "";
+        } else {
+            console.error("Kon geen element vinden om het opruimadvies in te tonen.");
+        }
 
 // 3. Genereer de opgeruimde foto met de gedetailleerde visuele beschrijving!
 const improveRes = await fetch('/api/improve', {
