@@ -1031,42 +1031,42 @@ const analyzeData = await analyzeRes.json();
         }
 
 // 3. Genereer de opgeruimde foto met de gedetailleerde visuele beschrijving!
-const improveRes = await fetch('/api/improve', {
+const improveResp = await fetch('/api/improve', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ 
         room: selectedRoom, 
-        analysis: analyzeData.visualDescription || analyzeData.analysis // 👈 Gebruikt nu de exacte visuele kenmerken!
+        analysis: analyzeData.visualDescription || analyzeData.analysis
     })
 });
 
-        if (!improveResp.ok) throw new Error("Improve request failed");
-     const improveData = await improveResp.json();
-        console.log("Response van /api/improve:", improveData);
+if (!improveResp.ok) throw new Error("Improve request failed");
+const improveData = await improveResp.json();
+console.log("Response van /api/improve:", improveData);
 
-        const img = document.getElementById('improvedImage');
+const img = document.getElementById('improvedImage');
 
-        let rawImage = improveData.improvedImage;
+let rawImage = improveData.improvedImage;
 
-        if (rawImage && rawImage.data && Array.isArray(rawImage.data) && rawImage.data.length > 0) {
-            rawImage = rawImage.data[0].b64_json || rawImage.data[0].url || rawImage.data[0];
-        }
+if (rawImage && rawImage.data && Array.isArray(rawImage.data) && rawImage.data.length > 0) {
+    rawImage = rawImage.data[0].b64_json || rawImage.data[0].url || rawImage.data[0];
+}
 
-        if (typeof rawImage === 'object' && rawImage !== null) {
-            rawImage = rawImage.b64_json || rawImage.url || rawImage.image || Object.values(rawImage)[0] || "";
-        }
+if (typeof rawImage === 'object' && rawImage !== null) {
+    rawImage = rawImage.b64_json || rawImage.url || rawImage.image || Object.values(rawImage)[0] || "";
+}
 
-        let finalImageSource = "";
-        if (typeof rawImage === 'string' && rawImage.length > 0) {
-            finalImageSource = rawImage;
-            if (!finalImageSource.startsWith('data:') && !finalImageSource.startsWith('http')) {
-                finalImageSource = "data:image/png;base64," + finalImageSource;
-            }
-            img.src = finalImageSource;
-            img.style.display = "block";
-        } else {
-            console.error("Geen geldige afbeelding string gevonden in:", improveData.improvedImage);
-        }
+let finalImageSource = "";
+if (typeof rawImage === 'string' && rawImage.length > 0) {
+    finalImageSource = rawImage;
+    if (!finalImageSource.startsWith('data:') && !finalImageSource.startsWith('http')) {
+        finalImageSource = "data:image/png;base64," + finalImageSource;
+    }
+    img.src = finalImageSource;
+    img.style.display = "block";
+} else {
+    console.error("Geen geldige afbeelding string gevonden in:", improveData.improvedImage);
+}
 
         // --- 💾 NIEUW: SLA DE SCAN OP IN DE BROWSER (LOCALSTORAGE) ---
         // --- 💾 NIEUW: SLA DE SCAN OP IN DE BROWSER (LOCALSTORAGE) ---
