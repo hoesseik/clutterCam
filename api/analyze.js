@@ -10,6 +10,33 @@ const config = {
   },
 };
 
+// --- RATE LIMITER INSTELLINGEN (Max 5 verzoeken per IP per uur) ---
+const requestCounts = new Map();
+const LIMIT = 5;
+const TIMEFRAME = 60 * 60 * 1000; // 1 uur
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const userRequest = requestCounts.get(ip);
+
+  if (!userRequest) {
+    requestCounts.set(ip, { count: 1, firstRequest: now });
+    return true;
+  }
+
+  if (now - userRequest.firstRequest > TIMEFRAME) {
+    requestCounts.set(ip, { count: 1, firstRequest: now });
+    return true;
+  }
+
+  if (userRequest.count >= LIMIT) {
+    return false;
+  }
+
+  userRequest.count++;
+  return true;
+}
+
 const handler = async function (req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -21,6 +48,12 @@ const handler = async function (req, res) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // --- CONTROLEER RATE LIMIT ---
+  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  if (!checkRateLimit(ip)) {
+    return res.status(429).json({ error: 'Te veel aanvragen. Probeer het over een uur nog eens.' });
   }
 
   try {
