@@ -381,26 +381,42 @@
 
     <h1 class="title">ClutterCam</h1>
 
-<!-- SCAN BUTTON -->
-<button id="scanBtn">Scan de Kamer</button>
-<div id="loadingIndicator" style="display: none; color: #555; margin-top: 10px; font-weight: bold;">
-    ⏳ Ruimte analyseren & opruimfoto genereren (dit duurt ~25 sec)...
-</div>
-
-    <!-- HIDDEN INPUTS -->
-  <canvas id="cameraCanvas" style="display:none;"></canvas>
-
-    <input type="file" id="uploadInput" accept="image/*" style="display:none;">
-
-    <!-- ROOM SELECTOR -->
+    <!-- 1. ROOM SELECTOR -->
     <div class="rooms">
         <div class="room" data-room="living">Woonkamer</div>
         <div class="room" data-room="bed">Slaapkamer</div>
         <div class="room" data-room="kitchen">Keuken</div>
     </div>
 
-    <!-- IMAGE PREVIEW -->
-    <img id="previewImage" alt="Voorbeeldfoto">
+    <!-- 2. IMAGE PREVIEW (de foto die je kiest) -->
+    <img id="previewImage" alt="Voorbeeldfoto" style="width: 100%; border-radius: 16px; margin-top: 15px; display: none;">
+
+    <!-- 3. SCAN BUTTON SECTION -->
+    <div style="margin: 20px 0; text-align: center;">
+        <button id="scanBtn" style="
+            width: 100%;
+            background: #007aff;
+            color: white;
+            padding: 16px;
+            border: none;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0, 122, 255, 0.3);
+            display: block;
+        ">
+            ✨ Scan de Kamer
+        </button>
+
+        <div id="loadingIndicator" style="display: none; color: #666; margin-top: 12px; font-weight: 600; font-size: 14px;">
+            ⏳ Ruimte analyseren & opruimfoto genereren (dit duurt ~25 sec)...
+        </div>
+    </div>
+
+    <!-- HIDDEN INPUTS -->
+    <canvas id="cameraCanvas" style="display:none;"></canvas>
+    <input type="file" id="uploadInput" accept="image/*" style="display:none;">
 
     <!-- ANALYSIS BOX -->
     <div class="analysis-box" id="analysisBox" style="display:none;">
