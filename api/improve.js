@@ -76,18 +76,33 @@ const handler = async function (req, res) {
       throw new Error('OPENAI_API_KEY is niet ingesteld.');
     }
 
-    const { room, analysis } = req.body || {};
-    const roomType = room ? room.toLowerCase() : "kamer";
+const { room, analysis } = req.body || {};
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// 1. Vertaal kamertype naar Engels voor maximale DALL-E precisie
+const roomTranslations = {
+    keuken: "kitchen",
+    woonkamer: "living room",
+    slaapkamer: "bedroom",
+    badkamer: "bathroom",
+    kantoor: "office",
+    zolder: "attic",
+    gang: "hallway"
+};
 
-    const prompt = `Genereer een fotorealistische afbeelding van precies deze ruimte, gebaseerd op deze beschrijving: "${analysis || roomType}".
+const rawRoom = room ? room.toLowerCase().trim() : "room";
+const englishRoom = roomTranslations[rawRoom] || rawRoom;
 
-    STRIKTE INSTRUCTIES:
-    1. Neem de bestaande architectuur, de indeling en de grote meubels (zoals banken, tafels, kasten) uit de beschrijving EXACT over.
-    2. Verander GEEN structurele elementen. Voeg absoluut GEEN ongevraagde elementen (zoals balken of schuine daken) toe, tenzij dit specifiek in de beschrijving staat.
-    3. Het enige wat je moet veranderen: verwijder ALLE rommel (zoals pizzadozen, flessen, rondslingerende kleding, afval) en maak de kamer perfect schoon, opgeruimd en sfeervol verlicht.`;
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// 2. Gecombineerde Engelse prompt (kamer + analyse verplicht samen)
+const prompt = `A highly realistic, beautifully organized, and clean photo of a ${englishRoom}.
+
+STRICT REQUIREMENTS:
+1. The output MUST clearly be a ${englishRoom}. Do not change the type of room.
+2. Base the layout on this description: "${analysis || 'A messy ' + englishRoom}".
+3. Keep the existing architecture, wall colors, layout, and large furniture intact.
+4. Do NOT add unwanted structural elements (like wooden ceiling beams or slanted roofs) unless specified.
+5. Remove ALL clutter, trash, loose papers, bottles, and mess. Make the room perfectly neat and brightly lit.`;
     const response = await openai.images.generate({
       model: "gpt-image-1",
       prompt: prompt,
@@ -120,6 +135,5 @@ const handler = async function (req, res) {
     });
   }
 };
-
 module.exports = handler;
 module.exports.config = config;
