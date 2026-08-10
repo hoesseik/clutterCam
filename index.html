@@ -577,9 +577,24 @@
     </div>
 </div>
 
+<!-- POPUP UPLOAD MENU -->
+<div class="upload-options" id="uploadPopup" style="display: none;">
+    <button class="popup-close" id="closePopupBtn">&times;</button>
+    <h3 style="margin-top: 0; text-align: center;">Kies een optie</h3>
+    <button class="photo-btn" id="takePhotoBtn">📷 Maak foto</button>
+    <button class="upload-btn" id="uploadFileBtn">📁 Upload bestand</button>
+</div>
+
+<!-- VERBORGEN INPUTS VOOR CAMERA EN BESTANDEN -->
+<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
+<input type="file" id="fileInput" accept="image/*" style="display: none;">
+
 <!-- TOAST -->
 <div id="toast" class="toast"></div>
+
 <script>
+    
+    // ... (Plak hier de rest van je bestaande JavaScript-code) ...
 /* ---------------------------------------------------
    APPLE-STYLE TOAST
 --------------------------------------------------- */
@@ -678,21 +693,29 @@ function compressImage(file, maxWidth, quality, callback) {
 /* ---------------------------------------------------
    ROOM SELECTOR & POPUP
 --------------------------------------------------- */
-document.querySelectorAll('.room').forEach(room => {
-    room.addEventListener('click', () => {
+// Zoek alle ruimte-knoppen
+document.querySelectorAll('.room').forEach(roomBtn => {
+    roomBtn.addEventListener('click', () => {
+        // 1. Markeer het gekozen vertrek als geselecteerd
         document.querySelectorAll('.room').forEach(r => r.classList.remove('selected'));
-        room.classList.add('selected');
-        selectedRoom = room.dataset.room;
-        const popup = document.getElementById('popupMenu');
-        if (popup) popup.style.display = "block";
+        roomBtn.classList.add('selected');
+
+        // 2. Open het uploadvenster
+        const popup = document.querySelector('.upload-options') || document.querySelector('.popup');
+        if (popup) {
+            popup.style.display = 'block';
+        }
     });
 });
 
-const popupCloseBtn = document.getElementById('popupCloseBtn');
-if (popupCloseBtn) {
-    popupCloseBtn.addEventListener('click', () => {
-        stopCamera();
-        document.getElementById('popupMenu').style.display = "none";
+// Zorg dat het kruisje/sluitknop de pop-up weer kan sluiten
+const closeBtn = document.querySelector('.popup-close');
+if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+        const popup = document.querySelector('.upload-options') || document.querySelector('.popup');
+        if (popup) {
+            popup.style.display = 'none';
+        }
     });
 }
 
