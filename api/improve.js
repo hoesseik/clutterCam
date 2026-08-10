@@ -81,7 +81,7 @@ CRITICAL VISUAL REQUIREMENTS:
 4. Lighting should be bright, warm, clean, and photorealistic.`;
 
     const response = await openai.images.generate({
-      model: "dall-e-3",
+      model: "gpt-image-1",
       prompt: prompt,
       n: 1,
       size: "1024x1024",
