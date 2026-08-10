@@ -16,7 +16,7 @@
 
 <style>
     /* ------------------------------
-       GLOBAL APPLE UI STYLE
+        GLOBAL APPLE UI STYLE
     ------------------------------ */
 
     body {
@@ -42,7 +42,7 @@
     }
 
     /* ------------------------------
-       BUTTONS (APPLE STYLE)
+        BUTTONS (APPLE STYLE)
     ------------------------------ */
 
     .scan-btn {
@@ -65,7 +65,7 @@
     }
 
     /* ------------------------------
-       ROOM SELECTOR
+        ROOM SELECTOR
     ------------------------------ */
 
     .rooms {
@@ -97,7 +97,7 @@
     }
 
     /* ------------------------------
-       IMAGE PREVIEW
+        IMAGE PREVIEW
     ------------------------------ */
 
     #previewImage {
@@ -117,7 +117,7 @@
     }
 
     /* ------------------------------
-       ANALYSIS BOX
+        ANALYSIS BOX
     ------------------------------ */
 
     .analysis-box {
@@ -135,18 +135,18 @@
     }
 
     /* ------------------------------
-       LOADING OVERLAY
+        LOADING OVERLAY
     ------------------------------ */
 
     #loadingOverlay {
         position: fixed;
-        top:0; left:0; right:0; bottom:0;
+        top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(255,255,255,0.85);
-        display:none;
-        justify-content:center;
-        align-items:center;
-        flex-direction:column;
-        z-index:999;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        z-index: 999;
         backdrop-filter: blur(6px);
     }
 
@@ -164,7 +164,7 @@
     }
 
     /* ------------------------------
-       HISTORY LIST
+        HISTORY LIST
     ------------------------------ */
 
     #historyList {
@@ -211,7 +211,7 @@
     }
 
     /* ------------------------------
-       NAVBAR (APPLE STYLE)
+        NAVBAR (APPLE STYLE)
     ------------------------------ */
 
     .navbar {
@@ -241,34 +241,53 @@
     }
 
     /* ------------------------------
-       POPUP MENU
+        POPUP & UPLOAD MENU (GECENTREERD)
     ------------------------------ */
 
-    .popup {
+    .popup,
+    .upload-options {
         position: fixed;
-        bottom: 90px;
+        top: 50%;
         left: 50%;
-        transform: translateX(-50%);
+        transform: translate(-50%, -50%);
+        bottom: auto;
         background: #fff;
-        padding: 18px;
-        border-radius: 16px;
+        padding: 20px;
+        border-radius: 18px;
         display: none;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.20);
-        z-index: 20;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        z-index: 1000;
         width: 85%;
         max-width: 350px;
+    }
+
+    .popup-close {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        background: transparent;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #8e8e93;
     }
 
     .photo-btn,
     .upload-btn {
         width: 100%;
         margin-top: 12px;
-        padding: 12px;
+        padding: 14px;
         border-radius: 12px;
         border: none;
         cursor: pointer;
         font-size: 16px;
         font-weight: 600;
+        transition: transform 0.1s ease;
+    }
+
+    .photo-btn:active,
+    .upload-btn:active {
+        transform: scale(0.98);
     }
 
     .photo-btn {
@@ -281,17 +300,9 @@
         background: #e5e5ea;
         color: #1c1c1e;
     }
-    .upload-options, .modal {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    bottom: auto; /* Haalt het venster los van de onderkant */
-    z-index: 1000;
-}
 
     /* ------------------------------
-       TOAST
+        TOAST
     ------------------------------ */
 
     .toast {
@@ -315,7 +326,7 @@
     }
 
     /* ------------------------------
-       MODAL
+        MODAL (HISTORY OVERLAY)
     ------------------------------ */
 
     #historyModal {
@@ -343,19 +354,9 @@
         overflow-y: auto;
         box-shadow: 0 6px 20px rgba(0,0,0,0.25);
     }
-    .popup-close {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: transparent;
-    border: none;
-    font-size: 22px;
-    cursor: pointer;
-    color: #333;
-}
 
-
-    #modalOriginal, #modalImproved {
+    #modalOriginal,
+    #modalImproved {
         width: 100%;
         border-radius: 14px;
         margin-top: 10px;
@@ -375,7 +376,6 @@
         font-weight: 600;
         box-shadow: 0 4px 12px rgba(255,59,48,0.25);
     }
-
 </style>
 </head>
 <body>
