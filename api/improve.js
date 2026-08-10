@@ -10,33 +10,6 @@ const config = {
   },
 };
 
-// --- RATE LIMITER INSTELLINGEN (Max 5 verzoeken per IP per uur) ---
-const requestCounts = new Map();
-const LIMIT = 5;
-const TIMEFRAME = 60 * 60 * 1000; // 1 uur
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const userRequest = requestCounts.get(ip);
-
-  if (!userRequest) {
-    requestCounts.set(ip, { count: 1, firstRequest: now });
-    return true;
-  }
-
-  if (now - userRequest.firstRequest > TIMEFRAME) {
-    requestCounts.set(ip, { count: 1, firstRequest: now });
-    return true;
-  }
-
-  if (userRequest.count >= LIMIT) {
-    return false;
-  }
-
-  userRequest.count++;
-  return true;
-}
-
 const handler = async function (req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -50,13 +23,8 @@ const handler = async function (req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // --- CONTROLEER RATE LIMIT ---
-  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
-  if (!checkRateLimit(ip)) {
-    return res.status(429).json({ error: 'Te veel aanvragen. Probeer het over een uur nog eens.' });
-  }
-
   try {
+    // --- CONTROLEER OF OPENAI KEY AANWEZIG IS (.env.local fallback) ---
     if (!process.env.OPENAI_API_KEY) {
       const envPath = path.join(process.cwd(), '.env.local');
       if (fs.existsSync(envPath)) {
@@ -76,64 +44,68 @@ const handler = async function (req, res) {
       throw new Error('OPENAI_API_KEY is niet ingesteld.');
     }
 
-const { room, analysis } = req.body || {};
+    // Zorg voor veilige verwerking van de body
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch (e) {}
+    }
 
-// 1. Vertaal kamertype naar Engels voor maximale DALL-E precisie
-const roomTranslations = {
-    keuken: "kitchen",
-    woonkamer: "living room",
-    slaapkamer: "bedroom",
-    badkamer: "bathroom",
-    kantoor: "office",
-    zolder: "attic",
-    gang: "hallway"
-};
+    const { room, analysis, visualDescription } = body || {};
+    const roomDesc = visualDescription || analysis || '';
 
-const rawRoom = room ? room.toLowerCase().trim() : "room";
-const englishRoom = roomTranslations[rawRoom] || rawRoom;
+    // Kamernaam vertalen
+    const roomTranslations = {
+      keuken: "kitchen",
+      woonkamer: "living room",
+      slaapkamer: "bedroom",
+      badkamer: "bathroom",
+      kantoor: "office",
+      zolder: "attic",
+      gang: "hallway"
+    };
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const rawRoom = room ? room.toLowerCase().trim() : "room";
+    const englishRoom = roomTranslations[rawRoom] || rawRoom;
 
-// 2. Gecombineerde Engelse prompt (kamer + analyse verplicht samen)
-const prompt = `A highly realistic, beautifully organized, and clean photo of a ${englishRoom}.
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-STRICT REQUIREMENTS:
-1. The output MUST clearly be a ${englishRoom}. Do not change the type of room.
-2. Base the layout on this description: "${analysis || 'A messy ' + englishRoom}".
-3. Keep the existing architecture, wall colors, layout, and large furniture intact.
-4. Do NOT add unwanted structural elements (like wooden ceiling beams or slanted roofs) unless specified.
-5. Remove ALL clutter, trash, loose papers, bottles, and mess. Make the room perfectly neat and brightly lit.`;
+    // Schoon de tekst op voor DALL-E
+    const cleanDescription = String(roomDesc).replace(/[*#]/g, '').slice(0, 1000);
+
+    const prompt = `A realistic photo of the EXACT SAME ${englishRoom}, completely clean, decluttered, and organized.
+
+CRITICAL VISUAL REQUIREMENTS:
+1. ROOM DETAILS & COLORS: Keep exact colors, cabinets, finishes, countertops, flooring, and appliances described here: "${cleanDescription}".
+2. ARCHITECTURE & LAYOUT: Keep the exact same room structure and cabinet layout intact.
+3. DECLUTTER ONLY: Remove all trash, loose clutter, dirty dishes, and mess.
+4. Lighting should be bright, warm, clean, and photorealistic.`;
+
     const response = await openai.images.generate({
-      model: "gpt-image-1",
+      model: "dall-e-3",
       prompt: prompt,
       n: 1,
       size: "1024x1024",
+      quality: "standard"
     });
 
-    const urlData = response?.data?.[0]?.url;
-    const b64Data = response?.data?.[0]?.b64_json;
+    const imageUrl = response.data[0]?.url || response.data[0]?.b64_json;
 
-    let finalImageUrl = urlData;
-    if (!finalImageUrl && b64Data) {
-      finalImageUrl = `data:image/png;base64,${b64Data}`;
-    }
-
-    if (!finalImageUrl) {
-      return res.status(500).json({ error: 'Geen afbeelding ontvangen van OpenAI' });
+    if (!imageUrl) {
+      throw new Error('Geen afbeelding ontvangen van OpenAI');
     }
 
     return res.status(200).json({
-      message: 'Image improved successfully',
-      improvedImage: finalImageUrl,
+      improvedImage: imageUrl
     });
 
   } catch (error) {
     console.error('Improve error:', error.message);
     return res.status(500).json({
-      error: 'Failed to generate improved image',
+      error: 'Improve failed',
       details: error.message,
     });
   }
 };
+
 module.exports = handler;
 module.exports.config = config;
