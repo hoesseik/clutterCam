@@ -380,6 +380,7 @@
 </head>
 <body>
 
+<!-- LOADING OVERLAY -->
 <div id="loadingOverlay">
     <div class="spinner"></div>
     <div style="margin-top:10px; font-size:18px;">AI is bezig…</div>
@@ -390,14 +391,13 @@
     <h1 class="title">ClutterCam</h1>
 
     <!-- 1. ROOM SELECTOR -->
- <!-- ROOM SELECTOR -->
-<div class="rooms">
-    <div class="room" data-room="Woonkamer">Woonkamer</div>
-    <div class="room" data-room="Slaapkamer">Slaapkamer</div>
-    <div class="room" data-room="Keuken">Keuken</div>
-</div>
+    <div class="rooms">
+        <div class="room" data-room="Woonkamer">Woonkamer</div>
+        <div class="room" data-room="Slaapkamer">Slaapkamer</div>
+        <div class="room" data-room="Keuken">Keuken</div>
+    </div>
 
-    <!-- 2. IMAGE PREVIEW (de foto die je kiest) -->
+    <!-- 2. IMAGE PREVIEW -->
     <img id="previewImage" alt="Voorbeeldfoto" style="width: 100%; border-radius: 16px; margin-top: 15px; display: none;">
 
     <!-- 3. SCAN BUTTON SECTION -->
@@ -422,10 +422,6 @@
             ⏳ Ruimte analyseren & opruimfoto genereren (dit duurt ~25 sec)...
         </div>
     </div>
-
-    <!-- HIDDEN INPUTS -->
-    <canvas id="cameraCanvas" style="display:none;"></canvas>
-    <input type="file" id="uploadInput" accept="image/*" style="display:none;">
 
     <!-- ANALYSIS BOX -->
     <div class="analysis-box" id="analysisBox" style="display:none;">
@@ -524,29 +520,6 @@
 
 </div>
 
-<!-- POPUP MENU -->
-<!-- POPUP MENU -->
-<div class="popup" id="popupMenu">
-    <button id="popupCloseBtn" class="popup-close">✖</button>
-
-    <div style="font-size:16px; font-weight:600;">Kies een optie</div>
-
-    <!-- Camera preview -->
-    <video id="cameraPreview" autoplay playsinline style="width:100%; max-width:400px; border-radius:10px; display:none;"></video>
-
-    <!-- Canvas -->
-    <canvas id="cameraCanvas" style="display:none;"></canvas>
-
-    <!-- Foto resultaat -->
-    <img id="photoResult" style="width:100%; max-width:400px; margin-top:10px; display:none;">
-
-    <!-- Knoppen -->
-    <button id="startCameraBtn">Camera starten</button>
-    <button id="takePhotoBtn">Foto maken</button>
-    <button class="upload-btn" id="uploadPhotoBtn">🖼️ Afbeelding uploaden</button>
-</div>
-
-
 <!-- NAVBAR -->
 <nav class="navbar">
     <div class="nav-item active" data-tab="home">Home</div>
@@ -577,7 +550,7 @@
     </div>
 </div>
 
-<!-- POPUP UPLOAD MENU -->
+<!-- UPLOAD & CAMERA POPUP MENU -->
 <div class="upload-options" id="uploadPopup" style="display: none;">
     <button class="popup-close" id="closePopupBtn">&times;</button>
     <h3 style="margin-top: 0; text-align: center;">Kies een optie</h3>
@@ -585,12 +558,78 @@
     <button class="upload-btn" id="uploadFileBtn">📁 Upload bestand</button>
 </div>
 
-<!-- VERBORGEN INPUTS VOOR CAMERA EN BESTANDEN -->
+<!-- VERBORGEN INPUTS EN CANVAS -->
 <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
 <input type="file" id="fileInput" accept="image/*" style="display: none;">
+<canvas id="cameraCanvas" style="display:none;"></canvas>
 
 <!-- TOAST -->
 <div id="toast" class="toast"></div>
+
+<!-- SCRIPT ONDERAAN PAGINA -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const uploadPopup = document.getElementById('uploadPopup');
+    const closePopupBtn = document.getElementById('closePopupBtn');
+    const takePhotoBtn = document.getElementById('takePhotoBtn');
+    const uploadFileBtn = document.getElementById('uploadFileBtn');
+    const cameraInput = document.getElementById('cameraInput');
+    const fileInput = document.getElementById('fileInput');
+    const previewImage = document.getElementById('previewImage');
+
+    // 1. Kamerselectie opent de upload pop-up
+    document.querySelectorAll('.room').forEach(roomBtn => {
+        roomBtn.addEventListener('click', () => {
+            document.querySelectorAll('.room').forEach(r => r.classList.remove('selected'));
+            roomBtn.classList.add('selected');
+            if (uploadPopup) uploadPopup.style.display = 'block';
+        });
+    });
+
+    // 2. Pop-up sluiten
+    if (closePopupBtn) {
+        closePopupBtn.addEventListener('click', () => {
+            uploadPopup.style.display = 'none';
+        });
+    }
+
+    // 3. Knoppen in de pop-up koppelen aan bestandskiezers
+    if (takePhotoBtn) {
+        takePhotoBtn.addEventListener('click', () => {
+            uploadPopup.style.display = 'none';
+            cameraInput.click();
+        });
+    }
+
+    if (uploadFileBtn) {
+        uploadFileBtn.addEventListener('click', () => {
+            uploadPopup.style.display = 'none';
+            fileInput.click();
+        });
+    }
+
+    // 4. Afbeelding inladen zodra geselecteerd
+    const handleFile = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            if (previewImage) {
+                previewImage.src = event.target.result;
+                previewImage.style.display = 'block';
+            }
+        };
+        reader.readAsDataURL(file);
+        e.target.value = ''; // Reset input
+    };
+
+    if (cameraInput) cameraInput.addEventListener('change', handleFile);
+    if (fileInput) fileInput.addEventListener('change', handleFile);
+});
+</script>
+
+</body>
 
 <script>
     
