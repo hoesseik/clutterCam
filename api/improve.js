@@ -85,7 +85,7 @@ CRITICAL VISUAL REQUIREMENTS:
       prompt: prompt,
       n: 1,
       size: "1024x1024",
-      quality: "standard"
+      
     });
 
     const imageUrl = response.data[0]?.url || response.data[0]?.b64_json;
