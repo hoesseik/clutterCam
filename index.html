@@ -568,7 +568,6 @@
 
 <!-- SCRIPT ONDERAAN PAGINA -->
 <script>
-
 /* ---------------------------------------------------
    GLOBAL STATE
 --------------------------------------------------- */
@@ -635,7 +634,6 @@ function stopCamera() {
     }
 }
 
-// Afbeeldingscompressie helper (verkleint naar max 1024px & JPEG 70%)
 function compressImage(file, maxWidth, quality, callback) {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -677,27 +675,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadInput = document.getElementById('uploadInput');
     const previewImage = document.getElementById('previewImage');
 
-    // 1. Kamerselectie: Sla de geselecteerde kamer op & open pop-up
     document.querySelectorAll('.room').forEach(roomBtn => {
         roomBtn.addEventListener('click', () => {
             document.querySelectorAll('.room').forEach(r => r.classList.remove('selected'));
             roomBtn.classList.add('selected');
-
-            // Opslaan in variabele
             selectedRoom = roomBtn.getAttribute('data-room') || roomBtn.innerText.trim();
 
             if (uploadPopup) uploadPopup.style.display = 'block';
         });
     });
 
-    // 2. Pop-up sluiten
     if (closePopupBtn) {
         closePopupBtn.addEventListener('click', () => {
             if (uploadPopup) uploadPopup.style.display = 'none';
         });
     }
 
-    // 3. Knoppen in pop-up koppelen aan bestandskiezers
     if (takePhotoBtn) {
         takePhotoBtn.addEventListener('click', () => {
             if (uploadPopup) uploadPopup.style.display = 'none';
@@ -712,7 +705,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 4. Centrale bestandsverwerking (comprimeren + opslaan + tonen)
     const processFile = (file) => {
         if (!file) return;
         compressImage(file, 1024, 0.7, (compressedBase64) => {
@@ -743,333 +735,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ---------------------------------------------------
    FILTERS & HISTORY
---------------------------------------------------- */
-document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activeFilter = btn.dataset.filter;
-        loadHistory();
-    });
-});
-
-async function loadHistory() {
-    try {
-        const items = JSON.parse(localStorage.getItem('clutter_history') || '[]');
-        const list = document.getElementById('historyList');
-        const historyBox = document.getElementById('historyBox');
-        if (!list) return;
-        list.innerHTML = "";
-
-        if (!items || items.length === 0) {
-            if (historyBox) historyBox.style.display = "none";
-            return;
-        }
-
-        if (historyBox) historyBox.style.display = "block";
-
-        items
-            .filter(item => typeof activeFilter === 'undefined' || activeFilter === "all" || item.room === activeFilter)
-            .forEach(item => {
-                const thumb = document.createElement('div');
-                thumb.className = "history-thumb";
-                thumb.dataset.id = item.id;
-
-                const img = document.createElement('img');
-                const imageSource = item.improved || item.original;
-
-                if (imageSource) {
-                    img.src = imageSource;
-                } else {
-                    img.style.display = 'none';
-                }
-
-                const label = document.createElement('div');
-                label.className = "history-label";
-                const rawDate = item.createdAt || item.date;
-                label.innerText = rawDate 
-                    ? new Date(rawDate).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
-                    : "Recent gescand";
-
-                const badge = document.createElement('div');
-                badge.className = "badge-room";
-                badge.innerText = item.room ? item.room.toUpperCase() : "";
-
-                thumb.appendChild(img);
-                thumb.appendChild(label);
-                thumb.appendChild(badge);
-
-                thumb.addEventListener('click', () => {
-                    if (typeof openHistoryDetail === 'function') openHistoryDetail(item.id);
-                });
-
-                list.appendChild(thumb);
-            });
-
-    } catch (err) {
-        console.error("Fout bij laden geschiedenis:", err);
-    }
-}
-
-async function openHistoryDetail(id) {
-    try {
-        const items = JSON.parse(localStorage.getItem('clutter_history') || '[]');
-        const meta = items.find(item => item.id == id);
-        if (!meta) return;
-
-        document.getElementById('modalOriginal').src = meta.original || "";
-        if (meta.improved) {
-            document.getElementById('modalImproved').style.display = "block";
-            document.getElementById('modalImproved').src = meta.improved;
-        } else {
-            document.getElementById('modalImproved').style.display = "none";
-        }
-
-        document.getElementById('modalAnalysis').innerText = meta.analysis || "Geen analyse beschikbaar";
-        document.getElementById('modalRoom').innerText = meta.room ? meta.room.toUpperCase() : "Scan details";
-        document.getElementById('modalDeleteBtn').onclick = () => deleteHistoryItem(id);
-        document.getElementById('historyModal').style.display = "flex";
-
-    } catch (err) {
-        console.error(err);
-        showToast("Kon detail niet laden");
-    }
-}
-
-const closeModal = document.getElementById('closeModal');
-if (closeModal) {
-    closeModal.addEventListener('click', () => {
-        document.getElementById('historyModal').style.display = "none";
-    });
-}
-
-async function deleteHistoryItem(id) {
-    if (!confirm("Weet je zeker dat je deze scan wilt verwijderen?")) return;
-
-    try {
-        let items = JSON.parse(localStorage.getItem('clutter_history') || '[]');
-        items = items.filter(item => item.id !== id && item.id != id);
-        localStorage.setItem('clutter_history', JSON.stringify(items));
-
-        showToast("Scan verwijderd.");
-
-        const modal = document.getElementById('historyModal');
-        if (modal) modal.style.display = "none";
-
-        await loadHistory();
-        await loadProfile();
-
-    } catch (err) {
-        console.error("Fout bij verwijderen:", err);
-    }
-}
-
-const deleteAllBtn = document.getElementById('deleteAllBtn');
-if (deleteAllBtn) {
-    deleteAllBtn.addEventListener('click', async () => {
-        if (!confirm("Weet je zeker dat je ALLE scans wilt verwijderen?")) return;
-        localStorage.removeItem('clutter_history');
-        showToast("Alle scans verwijderd.");
-        await loadHistory();
-        await loadProfile();
-    });
-}
-
-/* ---------------------------------------------------
-   PROFILE
---------------------------------------------------- */
-async function loadProfile() {
-    const items = JSON.parse(localStorage.getItem('clutter_history') || '[]');
-
-    const totalScansEl = document.getElementById('profileTotalScans');
-    if (totalScansEl) totalScansEl.innerText = items.length;
-
-    const roomCounts = {};
-    items.forEach(item => {
-        if (item.room) {
-            const r = item.room.toLowerCase();
-            roomCounts[r] = (roomCounts[r] || 0) + 1;
-        }
-    });
-    let mostRoom = "-";
-    let maxCount = 0;
-    for (const [r, c] of Object.entries(roomCounts)) {
-        if (c > maxCount) { maxCount = c; mostRoom = r; }
-    }
-    const mostRoomEl = document.getElementById('profileMostRoom');
-    if (mostRoomEl) mostRoomEl.innerText = mostRoom !== "-" ? mostRoom.toUpperCase() : "-";
-
-    const lastScan = items.length > 0 ? items[items.length - 1] : null;
-    const lastScanEl = document.getElementById('profileLastScan');
-    const lastImgEl = document.getElementById('profileLastImage');
-
-    if (lastScan) {
-        const rawDate = lastScan.createdAt || lastScan.date;
-        if (lastScanEl) {
-            lastScanEl.innerText = rawDate 
-                ? new Date(rawDate).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
-                : "Recent gescand";
-        }
-        if (lastImgEl) {
-            lastImgEl.src = lastScan.improved || lastScan.original || "";
-            lastImgEl.style.display = "block";
-        }
-    } else {
-        if (lastScanEl) lastScanEl.innerText = "-";
-        if (lastImgEl) lastImgEl.style.display = "none";
-    }
-}
-
-/* ---------------------------------------------------
-   NAVIGATION
---------------------------------------------------- */
-document.querySelectorAll('.nav-item').forEach((item) => {
-    item.addEventListener('click', () => {
-        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-
-        const tab = item.dataset.tab;
-
-        if (tab === "home") {
-            document.getElementById('analysisBox').style.display = "none";
-            document.getElementById('historyBox').style.display = "block";
-            document.getElementById('profileBox').style.display = "none";
-        }
-
-        if (tab === "scan") {
-            document.getElementById('analysisBox').style.display = "block";
-            document.getElementById('historyBox').style.display = "none";
-            document.getElementById('profileBox').style.display = "none";
-        }
-
-        if (tab === "profile") {
-            document.getElementById('analysisBox').style.display = "none";
-            document.getElementById('historyBox').style.display = "none";
-            document.getElementById('profileBox').style.display = "block";
-            loadProfile();
-        }
-    });
-});
-
-/* ---------------------------------------------------
-   UNIFIED SCAN FLOW
---------------------------------------------------- */
-const scanBtn = document.getElementById('scanBtn');
-if (scanBtn) {
-    scanBtn.addEventListener('click', async () => {
-        if (!selectedRoom) {
-            showToast("Selecteer eerst een kamer.");
-            return;
-        }
-        if (!capturedImage) {
-            showToast("Upload of maak eerst een foto.");
-            const fileInput = document.getElementById('fileInput') || document.getElementById('cameraInput');
-            if (fileInput) fileInput.click();
-            return;
-        }
-
-        showLoading();
-
-        try {
-            // 1. Analyseer de foto
-            const analyzeRes = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: capturedImage })
-            });
-
-            const analyzeData = await analyzeRes.json();
-            if (!analyzeRes.ok) throw new Error(analyzeData.error || 'Analyse mislukt');
-
-            const analysisBox = document.getElementById('analysisBox');
-            if (analysisBox) analysisBox.style.display = 'block';
-
-            const outputElem = document.getElementById('analysisOutput');
-            if (outputElem) {
-                outputElem.innerText = analyzeData.analysis || "";
-            }
-
-            // 2. Genereer opgeruimde foto
-            const improveResp = await fetch('/api/improve', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    room: selectedRoom,
-                    analysis: `DIT IS EEN ${selectedRoom.toUpperCase()}. ` + (analyzeData.visualDescription || analyzeData.analysis)
-                })
-            });
-
-            if (!improveResp.ok) throw new Error("Verbeteren van foto mislukt");
-            const improveData = await improveResp.json();
-
-            const img = document.getElementById('improvedImage');
-            let rawImage = improveData.imageUrl || improveData.improvedImage;
-
-            if (rawImage && rawImage.data && Array.isArray(rawImage.data) && rawImage.data.length > 0) {
-                rawImage = rawImage.data[0].b64_json || rawImage.data[0].url || rawImage.data[0];
-            }
-
-            if (typeof rawImage === 'object' && rawImage !== null) {
-                rawImage = rawImage.b64_json || rawImage.url || rawImage.image || Object.values(rawImage)[0] || "";
-            }
-
-            let finalImageSource = "";
-            if (typeof rawImage === 'string' && rawImage.length > 0) {
-                finalImageSource = rawImage;
-                if (!finalImageSource.startsWith('data:') && !finalImageSource.startsWith('http')) {
-                    finalImageSource = "data:image/png;base64," + finalImageSource;
-                }
-                if (img) {
-                    img.src = finalImageSource;
-                    img.style.display = "block";
-                }
-            }
-
-            // 3. Opslaan in LocalStorage
-            const newScan = {
-                id: Date.now(),
-                room: selectedRoom,
-                createdAt: new Date().toISOString(),
-                original: capturedImage,
-                improved: finalImageSource,
-                analysis: analyzeData.analysis || ""
-            };
-
-            let currentHistory = JSON.parse(localStorage.getItem('clutter_history') || '[]');
-            currentHistory.push(newScan);
-
-            if (currentHistory.length > 3) {
-                currentHistory = currentHistory.slice(currentHistory.length - 3);
-            }
-
-            try {
-                localStorage.setItem('clutter_history', JSON.stringify(currentHistory));
-            } catch (e) {
-                if (e.name === 'QuotaExceededError' || e.code === 22) {
-                    localStorage.setItem('clutter_history', JSON.stringify([newScan]));
-                }
-            }
-
-            await loadHistory();
-            await loadProfile();
-            showToast("Scan voltooid!");
-
-        } catch (err) {
-            console.error("Scan error:", err);
-            showToast("Scan mislukt: " + err.message);
-        } finally {
-            hideLoading();
-        }
-    });
-}
-
-/* ---------------------------------------------------
-   SERVICE WORKER
---------------------------------------------------- */
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/service-worker.js");
-}
-</script>& HISTORY
 --------------------------------------------------- */
 document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1288,7 +953,6 @@ if (scanBtn) {
             return;
         }
         if (!capturedImage) {
-            // Als er nog geen foto is, open de bestandskiezer
             const uploadInput = document.getElementById('uploadInput');
             if (uploadInput) uploadInput.click();
             return;
@@ -1297,7 +961,6 @@ if (scanBtn) {
         showLoading();
 
         try {
-            // 1. Analyseer de foto
             const analyzeRes = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1315,16 +978,14 @@ if (scanBtn) {
                 outputElem.innerText = analyzeData.analysis || "";
             }
 
-            // 2. Genereer opgeruimde foto
-          // Genereer opgeruimde foto
-           const improveResp = await fetch('/api/improve', {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ 
-           room: selectedRoom, // Geef bijv. "Keuken" mee
-           analysis: `DIT IS EEN ${selectedRoom.toUpperCase()}. ` + (analyzeData.visualDescription || analyzeData.analysis)
-    })
-});
+            const improveResp = await fetch('/api/improve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    room: selectedRoom,
+                    analysis: `DIT IS EEN ${selectedRoom.toUpperCase()}. ` + (analyzeData.visualDescription || analyzeData.analysis)
+                })
+            });
 
             if (!improveResp.ok) throw new Error("Verbeteren van foto mislukt");
             const improveData = await improveResp.json();
@@ -1352,7 +1013,6 @@ if (scanBtn) {
                 }
             }
 
-            // 3. Opslaan in LocalStorage (max 3 meest recente scans)
             const newScan = {
                 id: lastAnalysisId || Date.now(),
                 room: selectedRoom || "Woonkamer",
@@ -1399,5 +1059,6 @@ window.addEventListener('load', () => {
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/service-worker.js");
 }
+</script>
 </body>
 </html>
