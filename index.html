@@ -973,10 +973,22 @@ if (scanBtn) {
             const analysisBox = document.getElementById('analysisBox');
             if (analysisBox) analysisBox.style.display = 'block';
 
-            const outputElem = document.getElementById('analysisOutput') || document.getElementById('analysisResult');
-            if (outputElem) {
-                outputElem.innerText = analyzeData.analysis || "";
-            }
+           const outputElem = document.getElementById('analysisOutput') || document.getElementById('analysisResult');
+if (outputElem) {
+    let analysisText = analyzeData.analysis;
+
+    // Als de analyse een object is, haal de tekst eruit
+    if (typeof analysisText === 'object' && analysisText !== null) {
+        analysisText = analysisText.text || analysisText.recommendations || analysisText.analysis || JSON.stringify(analysisText);
+    }
+
+    // Als de root van analyzeData direct de tekst bevat
+    if (!analysisText && analyzeData.text) {
+        analysisText = analyzeData.text;
+    }
+
+    outputElem.innerText = analysisText || "Geen aanbevelingen beschikbaar";
+}
 
             const improveResp = await fetch('/api/improve', {
                 method: 'POST',
