@@ -568,6 +568,7 @@
 
 <!-- SCRIPT ONDERAAN PAGINA -->
 <script>
+
 /* ---------------------------------------------------
    GLOBAL STATE
 --------------------------------------------------- */
@@ -1068,10 +1069,7 @@ if (scanBtn) {
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/service-worker.js");
 }
-</script>
-
-/* ---------------------------------------------------
-   FILTERS & HISTORY
+</script>& HISTORY
 --------------------------------------------------- */
 document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1401,6 +1399,5 @@ window.addEventListener('load', () => {
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/service-worker.js");
 }
-</script>
 </body>
 </html>
